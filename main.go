@@ -3,6 +3,15 @@ package main
 import "fmt"
 
 func main() {
-    fmt.Println("Hello, Go!")
-    fmt.Println("This is the code for homework #2")
+    var size int = 8;
+    for i := 0; i < size; i++ {
+        for j := 0; j < size; j++ {
+            if ((i+j) % 2 == 0) {
+                fmt.Print("#")
+            } else {
+                fmt.Print(" ")
+            }
+        }
+        fmt.Println()
+    }
 }
