@@ -8,10 +8,12 @@ import (
 	"example.com/go-basic/packages/internal/models/chess"
 )
 
-func renderChessBoard(b chess.ChessBoard) {
+func renderChessBoard(b *chess.ChessBoard) {
 	sizeWidth := len(strconv.Itoa(b.Size))
 
-	renderColumnHeader(b)
+	lineCount := 0
+
+	lineCount += renderColumnHeader(b)
 
 	for i := 0; i < b.Size; i++ {
 
@@ -38,14 +40,15 @@ func renderChessBoard(b chess.ChessBoard) {
 
 		fmt.Print(rowNum)
 		fmt.Println()
+		lineCount++
 	}
 
-	renderColumnHeader(b)
+	lineCount += renderColumnHeader(b)
 }
 
-
-func renderColumnHeader(b chess.ChessBoard) {
-		maxLen := b.MaxColLabelLen()
+func renderColumnHeader(b *chess.ChessBoard) int {
+	maxLen := b.MaxColLabelLen()
+	lineCount := 0
 
 	// каждая строка = один уровень букв
 	for level := 0; level < maxLen; level++ {
@@ -65,5 +68,8 @@ func renderColumnHeader(b chess.ChessBoard) {
 			}
 		}
 		fmt.Println()
+		lineCount++
 	}
+
+	return lineCount
 }
