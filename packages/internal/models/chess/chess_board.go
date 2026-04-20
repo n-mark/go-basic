@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	darkCell   = "\x1b[48;2;205;133;63m"
-	lightCell  = "\x1b[48;2;245;222;179m"
-	blackPiece = "\x1b[38;2;80;40;20m"
-	whitePiece = "\x1b[38;2;255;255;255m"
+	// Используем 256-цветовую палитру для лучшей совместимости
+	darkCell   = "\x1b[48;5;130m" // коричневый
+	lightCell  = "\x1b[48;5;223m" // пшеничный
+	blackPiece = "\x1b[38;5;52m"  // тёмно-коричневый для текста
+	whitePiece = "\x1b[38;5;231m" // белый для текста
 	Reset      = "\x1b[0m"
 
 	ColorWhite = "white"
@@ -35,18 +36,14 @@ type ChessBoard struct {
 
 func NewChessBoard(size int) *ChessBoard {
 	c := &ChessBoard{Size: size}
-	c.Layout = initCells(size)
-	c.Cells = make(map[string]*cell, size*size)
-	for i := 0; i < size; i++ {
-		for j := 0; j < size; j++ {
-			c.Cells[c.Layout[i][j].signature] = c.Layout[i][j]
-		}
-	}
+	c.Layout, c.Cells = initCells(size)
+
 	return c
 }
 
-func initCells(size int) [][]*cell {
+func initCells(size int) ([][]*cell, map[string]*cell) {
 	layout := make([][]*cell, size)
+	cellsMap := make(map[string]*cell, size*size)
 
 	for i := 0; i < size; i++ {
 		row := make([]*cell, size)
@@ -57,18 +54,23 @@ func initCells(size int) [][]*cell {
 			if (i+j)%2 == 0 {
 				color = darkCell
 			}
+
+			cellSignature := getSignature(i, j)
+
 			c := &cell{Figure: figure,
 				Color:     color,
 				xIndex:    i,
 				yIndex:    j,
-				signature: getSignature(i, j),
+				signature: cellSignature,
 			}
+
+			cellsMap[cellSignature] = c
 			row[j] = c
 		}
 		layout[i] = row
 	}
 
-	return layout
+	return layout, cellsMap
 }
 
 func getSignature(row int, col int) string {
@@ -126,28 +128,6 @@ func (b *ChessBoard) GetFigureBySignature(sig string) *Figure {
 	return b.Cells[strings.ToUpper(sig)].Figure
 }
 
-func (b *ChessBoard) HasWhiteKing() bool {
-	for i := 0; i < b.Size; i++ {
-		for j := 0; j < b.Size; j++ {
-			if b.Layout[i][j].Figure != nil && b.Layout[i][j].Figure.Symbol == '♔' {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (b *ChessBoard) HasBlackKing() bool {
-	for i := 0; i < b.Size; i++ {
-		for j := 0; j < b.Size; j++ {
-			if b.Layout[i][j].Figure != nil && b.Layout[i][j].Figure.Symbol == '♚' {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func (b *ChessBoard) CellExists(sig string) bool {
 	_, exists := b.Cells[strings.ToUpper(sig)]
 	return exists
@@ -159,34 +139,15 @@ func (b *ChessBoard) HasFigure(sig string) bool {
 }
 
 // GetAllValidMoves возвращает все возможные ходы для указанного цвета
-func (b *ChessBoard) GetAllValidMoves(color string) []MoveInfo {
-	var moves []MoveInfo
+func (b *ChessBoard) GetAllValidMoves(color string) ([]string, []string) {
+	var fromMoves []string
+	var toMoves []string
 	for sig, cell := range b.Cells {
 		if cell.Figure != nil && cell.Figure.GameColor == color {
-			moves = append(moves, MoveInfo{From: sig})
+			fromMoves = append(fromMoves, sig)
+		} else if (cell.Figure != nil && cell.Figure.GameColor != color) || cell.Figure == nil {
+			toMoves = append(toMoves, sig)
 		}
 	}
-	return moves
-}
-
-// GetPossibleTargets возвращает все возможные целевые клетки для фигуры
-func (b *ChessBoard) GetPossibleTargets(fromSig string) []string {
-	fromKey := strings.ToUpper(fromSig)
-	cell := b.Cells[fromKey]
-	if cell == nil || cell.Figure == nil {
-		return nil
-	}
-	
-	var targets []string
-	for sig := range b.Cells {
-		if sig != fromKey {
-			targets = append(targets, sig)
-		}
-	}
-	return targets
-}
-
-type MoveInfo struct {
-	From string
-	To   string
+	return fromMoves, toMoves
 }

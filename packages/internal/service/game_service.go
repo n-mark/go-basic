@@ -11,11 +11,10 @@ import (
 
 	"golang.org/x/term"
 
-	"example.com/go-basic/packages/internal/models/chess"
 	"example.com/go-basic/packages/internal/models/game"
+	"example.com/go-basic/packages/internal/models/player"
 )
 
-// MenuItem представляет пункт меню
 type MenuItem struct {
 	Label  string
 	Action func(*game.Game, *bufio.Reader) bool
@@ -28,7 +27,6 @@ func clearScreen() {
 func readKey() string {
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
-		// Если не получилось - используем обычный ввод
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 		return input
@@ -53,7 +51,7 @@ func renderMenu(selected int, items []MenuItem) {
 		}
 	}
 	fmt.Println()
-	fmt.Println("\x1b[90m(↑↓←→ или W/S/A/D для выбора, Enter для подтверждения)\x1b[0m")
+	fmt.Println("\x1b[90m(стрелки или W/S/A/D, Enter - подтвердить)\x1b[0m")
 }
 
 func showMenu(items []MenuItem) int {
@@ -64,15 +62,15 @@ func showMenu(items []MenuItem) int {
 		key := readKey()
 
 		switch key {
-		case "\x1b[A", "w", "W", "й", "Й": // вверх
+		case "\x1b[A", "w", "W", "й", "Й":
 			selected = (selected - 1 + len(items)) % len(items)
-		case "\x1b[B", "s", "S", "ы", "Ы": // вниз
+		case "\x1b[B", "s", "S", "ы", "Ы":
 			selected = (selected + 1) % len(items)
-		case "\x1b[C", "d", "D", "в", "В": // вправо
+		case "\x1b[C", "d", "D", "в", "В":
 			selected = (selected + 1) % len(items)
-		case "\x1b[D", "a", "A", "ф", "Ф": // влево
+		case "\x1b[D", "a", "A", "ф", "Ф":
 			selected = (selected - 1 + len(items)) % len(items)
-		case "\n", "\r": // Enter
+		case "\n", "\r":
 			return selected
 		case "1":
 			return 0
@@ -82,23 +80,22 @@ func showMenu(items []MenuItem) int {
 			return 2
 		}
 
-		// Перемещаем курсор вверх для перерисовки
 		fmt.Printf("\x1b[%dA", 2)
 	}
 }
 
-func performAutoMove(chessGame *game.Game) (string, string, bool) {
-	moves := chessGame.GetValidMovesForCurrentPlayer()
-	if len(moves) == 0 {
+func performAutoMove(chessGame *game.Game, renderFunc func(*game.Game, string, float64)) (string, string, bool) {
+	fromMoves, toMoves := chessGame.GetValidMovesForCurrentPlayer()
+	if len(fromMoves) == 0 {
 		return "", "", false
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	randomIndex := rand.Intn(len(moves))
-	fromSig := moves[randomIndex].From
+	// rand.Seed(time.Now().UnixNano())
+	randomIndex := rand.Intn(len(fromMoves))
+	fromSig := fromMoves[randomIndex]
 
-	board := chessGame.GetChessBoard()
-	targets := board.GetPossibleTargets(fromSig)
+	// board := chessGame.GetChessBoard()
+	targets := toMoves
 	if len(targets) == 0 {
 		return "", "", false
 	}
@@ -116,7 +113,12 @@ func performAutoMove(chessGame *game.Game) (string, string, bool) {
 	}
 
 	delay := time.Duration(2+rand.Intn(3)) * time.Second
-	fmt.Printf("\nДумаю... (%.0f сек)\n", delay.Seconds())
+
+	// Рендерим с статусом "думаю"
+	if renderFunc != nil {
+		renderFunc(chessGame, "thinking", delay.Seconds())
+	}
+
 	time.Sleep(delay)
 
 	return fromSig, randomTarget, true
@@ -166,38 +168,68 @@ func handleSurrender(chessGame *game.Game) bool {
 
 func handleAutoMove(chessGame *game.Game) bool {
 	fmt.Println("\n--- Автоход ---")
-	fmt.Print("Сколько ходов сделать? (1-10): ")
+	fmt.Print("Сколько ходов сделать? ")
 
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
 
 	count, err := strconv.Atoi(input)
-	if err != nil || count < 1 || count > 10 {
-		fmt.Println("Введите число от 1 до 10")
-		fmt.Print("Нажмите Enter для продолжения...")
-		reader.ReadString('\n')
+	if err != nil || count < 1 {
+		fmt.Println("Введите число автоходов")
 		return true
 	}
 
-	for i := 0; i < count && !chessGame.IsOver(); i++ {
-		fromSig, toSig, ok := performAutoMove(chessGame)
-		if !ok {
-			fmt.Println("Нет доступных ходов!")
+	currentPlayer := chessGame.CurrentPlayerName()
+	chessGame.SetAutoMoveCount(currentPlayer, count)
+
+	// Сразу переходим к выполнению автоходов
+	return false
+}
+
+func renderWithTitle(g *game.Game, status string, seconds float64) {
+	player1 := g.GetPlayer1()
+	player2 := g.GetPlayer2()
+
+	renderPlayerHeader(g, player2, status, seconds)
+	renderChessBoard(g.GetChessBoard())
+	renderPlayerHeader(g, player1, status, seconds)
+
+	fmt.Println()
+}
+
+func executeAutoMoves(chessGame *game.Game) {
+	// Выполняем автоходы по очереди — каждый текущий игрок делает свой ход
+	for !chessGame.IsOver() {
+		clearScreen()
+		currentPlayer := chessGame.CurrentPlayerName()
+
+		// Если у текущего игрока нет автоходов — выходим
+		if !chessGame.HasAutoMovePending(currentPlayer) {
 			break
 		}
+
+		fromSig, toSig, ok := performAutoMove(chessGame, renderWithTitle)
+
+		if !ok {
+			fmt.Println("Нет доступных ходов!")
+			chessGame.DecrementAutoMove(currentPlayer)
+			break
+		}
+
 		valid, _ := chessGame.ValidateMove(fromSig, toSig)
 		if !valid {
-			i--
 			continue
 		}
-		chessGame.MakeMove(fromSig, toSig)
-		fmt.Printf("Автоход %d/%d: %s -> %s\n", i+1, count, fromSig, toSig)
-	}
 
-	fmt.Print("Нажмите Enter для продолжения...")
-	reader.ReadString('\n')
-	return true
+		chessGame.MakeMove(fromSig, toSig)
+		fmt.Printf("\x1b[36mАвтоход %s: %s -> %s\x1b[0m\n", currentPlayer, fromSig, toSig)
+
+		chessGame.DecrementAutoMove(currentPlayer)
+
+		clearScreen()
+		renderWithTitle(chessGame, "", 0)
+	}
 }
 
 func StartGame() {
@@ -232,19 +264,35 @@ func StartGame() {
 
 	for !chessGame.IsOver() {
 		clearScreen()
-		renderScreen(chessGame)
+		renderWithTitle(chessGame, "", 0)
 
-		currentPlayer := chessGame.CurrentPlayer()
-		color := "белыми"
-		if currentPlayer.GetFiguresColor() == chess.ColorBlack {
-			color = "черными"
+		selected := showMenu(menuItems)
+		actionResult := menuItems[selected].Action(chessGame, reader)
+
+		// Пункт "Автоход" (индекс 2) возвращает false чтобы сразу выполнить автоходы
+		if selected == 2 && !actionResult {
+			executeAutoMoves(chessGame)
+			if chessGame.IsOver() {
+				break
+			}
+			continue // показываем меню снова
 		}
 
-		fmt.Printf("\n\x1b[1mХод игрока %s (%s)\x1b[0m\n", currentPlayer, color)
-		selected := showMenu(menuItems)
-		continueGame := menuItems[selected].Action(chessGame, reader)
-		if !continueGame {
+		if !actionResult {
 			break
+		}
+
+		if chessGame.IsOver() {
+			break
+		}
+
+		// Проверяем, есть ли у текущего игрока автоходы
+		currentPlayer := chessGame.CurrentPlayerName()
+		if chessGame.HasAutoMovePending(currentPlayer) {
+			executeAutoMoves(chessGame)
+			if chessGame.IsOver() {
+				break
+			}
 		}
 	}
 
@@ -258,11 +306,32 @@ func StartGame() {
 	}
 }
 
-func renderScreen(game *game.Game) {
+func renderScreen(g *game.Game) {
+	renderWithTitle(g, "", 0)
+}
+
+func renderPlayerHeader(g *game.Game, p *player.Player, status string, seconds float64) {
+	var color string
+		if ("black" == p.GetFiguresColor()) {
+			color = "черные"
+		} else {
+			color = "белые"
+		}
+
 	fmt.Println("═══════════════════════════════════════")
-	fmt.Printf(" Игрок %s vs %s \n", game.GetPlayer1(), game.GetPlayer2())
+	if g.CurrentPlayerName() == p.GetName() {
+		fmt.Print("> ")
+	} else {
+		fmt.Print("  ")
+	}
+	fmt.Printf("%s (%s)", p.GetName(), color)
+	if g.GetAutoMoveCount(p.GetName()) > 0 {
+		fmt.Printf(" Кол-во автоходов: %d", g.GetAutoMoveCount(p.GetName()))
+		fmt.Print(" ")
+	}
+	if status == "thinking" && g.CurrentPlayerName() == p.GetName() {
+		fmt.Printf(" - думаю %.0f сек...", seconds)
+	}
+	fmt.Println()
 	fmt.Println("═══════════════════════════════════════")
-	fmt.Println(game.GetPlayer1())
-	renderChessBoard(game.GetChessBoard())
-	fmt.Println(game.GetPlayer2())
 }

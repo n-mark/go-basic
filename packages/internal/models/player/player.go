@@ -36,3 +36,7 @@ func (p Player) String() string {
 func (p Player) GetFiguresColor() string {
 	return p.figuresColor
 }
+
+func (p Player) GetName() string {
+	return p.name
+}

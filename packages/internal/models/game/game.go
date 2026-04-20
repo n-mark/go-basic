@@ -17,6 +17,7 @@ type Game struct {
 	gameStart     time.Time
 	gameEnd       time.Time
 	winner        *player.Player
+	autoMoveCount map[string]int
 }
 
 func NewGame(boardSize int, player1Name string, player2Name string) *Game {
@@ -29,74 +30,86 @@ func NewGame(boardSize int, player1Name string, player2Name string) *Game {
 		chessBoard:    board,
 		isPlayer1Turn: true,
 		gameStart:     time.Now(),
+		autoMoveCount: make(map[string]int),
 	}
 }
 
-func (game *Game) StartGame() {
-	game.gameStart = time.Now()
+func (g *Game) StartGame() {
+	g.gameStart = time.Now()
 }
 
-func (game *Game) StopGame() {
-	game.gameEnd = time.Now()
+func (g *Game) StopGame() {
+	g.gameEnd = time.Now()
 }
 
-func (game *Game) SetWinner(p *player.Player) {
-	game.winner = p
+func (g *Game) SetWinner(p *player.Player) {
+	g.winner = p
 }
 
-func (game *Game) CurrentPlayer() *player.Player {
-	if game.isPlayer1Turn {
-		return game.player1
+func (g *Game) CurrentPlayer() *player.Player {
+	if g.isPlayer1Turn {
+		return g.player1
 	}
-	return game.player2
+	return g.player2
 }
 
-func (game *Game) IsOver() bool {
-	return game.isOver
+func (g *Game) CurrentPlayerName() string {
+	return g.CurrentPlayer().GetName()
 }
 
-func (game *Game) GetWinner() *player.Player {
-	return game.winner
+func (g *Game) IsPlayer1Turn() bool {
+	return g.isPlayer1Turn
 }
 
-func (game *Game) MakeMove(fromSig, toSig string) {
+func (g *Game) ForceSetTurn(isPlayer1 bool) {
+	g.isPlayer1Turn = isPlayer1
+}
+
+func (g *Game) IsOver() bool {
+	return g.isOver
+}
+
+func (g *Game) GetWinner() *player.Player {
+	return g.winner
+}
+
+func (g *Game) MakeMove(fromSig, toSig string) {
 	fromKey := strings.ToUpper(fromSig)
 	toKey := strings.ToUpper(toSig)
 
-	toFigure := game.chessBoard.GetFigureBySignature(toKey)
+	toFigure := g.chessBoard.GetFigureBySignature(toKey)
 	if toFigure != nil {
-		game.CurrentPlayer().SetFigureTook(*toFigure)
+		g.CurrentPlayer().SetFigureTook(*toFigure)
+
+		if '♔' == toFigure.Symbol || '♚' == toFigure.Symbol {
+			g.isOver = true;
+			g.SetWinner(g.CurrentPlayer())
+			g.StopGame()
+		}
 	}
 
-	game.chessBoard.MoveBySignature(fromKey, toKey)
-
-	if game.checkKingCaptured() {
-		game.isOver = true
-		game.SetWinner(game.CurrentPlayer())
-		game.StopGame()
-	}
-
-	game.isPlayer1Turn = !game.isPlayer1Turn
+	g.chessBoard.MoveBySignature(fromKey, toKey)
+	g.isPlayer1Turn = !g.isPlayer1Turn
 }
 
-func (game *Game) ValidateMove(fromSig, toSig string) (bool, string) {
+func (g *Game) ValidateMove(fromSig, toSig string) (bool, string) {
 	fromKey := strings.ToUpper(fromSig)
 	toKey := strings.ToUpper(toSig)
 
-	if !game.chessBoard.CellExists(fromKey) {
+	if !g.chessBoard.CellExists(fromKey) {
 		return false, "Клетка " + fromSig + " не существует"
 	}
 
-	if !game.chessBoard.CellExists(toKey) {
+	if !g.chessBoard.CellExists(toKey) {
 		return false, "Клетка " + toSig + " не существует"
 	}
 
-	if !game.chessBoard.HasFigure(fromKey) {
+	if !g.chessBoard.HasFigure(fromKey) {
 		return false, "На клетке " + fromSig + " нет фигуры"
 	}
 
-	figure := game.chessBoard.GetFigureBySignature(fromKey)
-	currentColor := game.CurrentPlayer().GetFiguresColor()
+	figure := g.chessBoard.GetFigureBySignature(fromKey)
+	currentColor := g.CurrentPlayer().GetFiguresColor()
 	if figure.GameColor != currentColor {
 		return false, "Эта фигура не принадлежит вам"
 	}
@@ -104,37 +117,55 @@ func (game *Game) ValidateMove(fromSig, toSig string) (bool, string) {
 	return true, ""
 }
 
-func (game *Game) checkKingCaptured() bool {
-	return !game.chessBoard.HasWhiteKing() || !game.chessBoard.HasBlackKing()
+func (g *Game) GetPlayer1() *player.Player {
+	return g.player1
 }
 
-func (game *Game) GetPlayer1() *player.Player {
-	return game.player1
+func (g *Game) GetPlayer2() *player.Player {
+	return g.player2
 }
 
-func (game *Game) GetPlayer2() *player.Player {
-	return game.player2
+func (g *Game) GetChessBoard() *chess.ChessBoard {
+	return g.chessBoard
 }
 
-func (game *Game) GetChessBoard() *chess.ChessBoard {
-	return game.chessBoard
+func (g *Game) GetValidMovesForCurrentPlayer() ([]string, []string) {
+	color := g.CurrentPlayer().GetFiguresColor()
+	return g.chessBoard.GetAllValidMoves(color)
 }
 
-// GetValidMovesForCurrentPlayer возвращает все валидные ходы текущего игрока
-func (game *Game) GetValidMovesForCurrentPlayer() []chess.MoveInfo {
-	color := game.CurrentPlayer().GetFiguresColor()
-	return game.chessBoard.GetAllValidMoves(color)
-}
-
-// Surrender текущий игрок сдаётся
-func (game *Game) Surrender() {
-	game.isOver = true
-	otherPlayer := game.player2
-	if game.isPlayer1Turn {
-		otherPlayer = game.player2
+func (g *Game) Surrender() {
+	g.isOver = true
+	otherPlayer := g.player2
+	if g.isPlayer1Turn {
+		otherPlayer = g.player2
 	} else {
-		otherPlayer = game.player1
+		otherPlayer = g.player1
 	}
-	game.SetWinner(otherPlayer)
-	game.StopGame()
+	g.SetWinner(otherPlayer)
+	g.StopGame()
+}
+
+func (g *Game) SetAutoMoveCount(playerName string, count int) {
+	g.autoMoveCount[playerName] = count
+}
+
+func (g *Game) GetAutoMoveCount(playerName string) int {
+	return g.autoMoveCount[playerName]
+}
+
+func (g *Game) DecrementAutoMove(playerName string) bool {
+	if g.autoMoveCount[playerName] > 0 {
+		g.autoMoveCount[playerName]--
+		return g.autoMoveCount[playerName] > 0
+	}
+	return false
+}
+
+func (g *Game) HasAutoMovePending(playerName string) bool {
+	return g.autoMoveCount[playerName] > 0
+}
+
+func (g *Game) ClearAutoMoves() {
+	g.autoMoveCount = make(map[string]int)
 }
