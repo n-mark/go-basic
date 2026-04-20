@@ -1,6 +1,7 @@
 package chess
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 )
@@ -150,4 +151,9 @@ func (b *ChessBoard) GetAllValidMoves(color string) ([]string, []string) {
 		}
 	}
 	return fromMoves, toMoves
+}
+
+func (ch ChessBoard) SerializeToJson() string {
+	jsonData, _ := json.Marshal(ch)
+	return string(jsonData)
 }

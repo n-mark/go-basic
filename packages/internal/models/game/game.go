@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -168,4 +169,10 @@ func (g *Game) HasAutoMovePending(playerName string) bool {
 
 func (g *Game) ClearAutoMoves() {
 	g.autoMoveCount = make(map[string]int)
+}
+
+
+func (g Game) SerializeToJson() string {
+	jsonData, _ := json.Marshal(g)
+	return string(jsonData)
 }

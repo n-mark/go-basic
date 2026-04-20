@@ -1,6 +1,10 @@
 package player
 
-import "example.com/go-basic/packages/internal/models/chess"
+import (
+	"encoding/json"
+
+	"example.com/go-basic/packages/internal/models/chess"
+)
 
 type Player struct {
 	name         string
@@ -39,4 +43,9 @@ func (p Player) GetFiguresColor() string {
 
 func (p Player) GetName() string {
 	return p.name
+}
+
+func (p Player) SerializeToJson() string {
+	jsonData, _ := json.Marshal(p)
+	return string(jsonData)
 }
