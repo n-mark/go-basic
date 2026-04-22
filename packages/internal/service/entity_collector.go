@@ -1,7 +1,10 @@
 package service
 
 import (
-	"example.com/go-basic/packages/internal/interfaces"
+	// "fmt"
+
+	"fmt"
+
 	"example.com/go-basic/packages/internal/models/chess"
 	"example.com/go-basic/packages/internal/models/game"
 	"example.com/go-basic/packages/internal/models/player"
@@ -9,8 +12,7 @@ import (
 )
 
 type EntityCollector struct {
-	EntityList []interfaces.Entity
-	Repo       repository.Repo
+	repo repository.Repo
 }
 
 func (e *EntityCollector) CreateRandomEntities() {
@@ -20,9 +22,27 @@ func (e *EntityCollector) CreateRandomEntities() {
 	g := game.Game{}
 	m := game.Move{}
 
-	e.EntityList = append(e.EntityList, p, cb, f, g, m)
+	e.repo.DefineAndAdd(p)
+	e.repo.DefineAndAdd(cb)
+	e.repo.DefineAndAdd(f)
+	e.repo.DefineAndAdd(g)
+	e.repo.DefineAndAdd(m)
+}
 
-	for _, el := range e.EntityList {
-		e.Repo.DefineAndAdd(el)
-	}
+func NewCollector() *EntityCollector {
+	ec := EntityCollector{
+		repo: repository.Repo{
+			Players:     make([]player.Player, 0),
+			Figures:     make([]chess.Figure, 0),
+			Games:       make([]game.Game, 0),
+			Moves:       make([]game.Move, 0),
+			ChessBoards: make([]chess.ChessBoard, 0),
+		}}
+
+	return &ec
+}
+
+func (e *EntityCollector) DisplayRepoContent() {
+	fmt.Println("REPO CONTENT: ")
+	fmt.Println(e.repo)
 }
