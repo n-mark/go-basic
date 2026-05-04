@@ -1,10 +1,6 @@
 package service
 
 import (
-	// "fmt"
-
-	"fmt"
-
 	"example.com/go-basic/packages/internal/models/chess"
 	"example.com/go-basic/packages/internal/models/game"
 	"example.com/go-basic/packages/internal/models/player"
@@ -40,9 +36,4 @@ func NewCollector() *EntityCollector {
 		}}
 
 	return &ec
-}
-
-func (e *EntityCollector) DisplayRepoContent() {
-	fmt.Println("REPO CONTENT: ")
-	fmt.Println(e.repo)
 }
