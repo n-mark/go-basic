@@ -19,6 +19,8 @@ type Game struct {
 	gameEnd       time.Time
 	winner        *player.Player
 	autoMoveCount map[string]int
+	isAutoGame    bool
+	moveTimer     time.Time
 }
 
 func NewGame(boardSize int, player1Name string, player2Name string) *Game {
@@ -35,8 +37,24 @@ func NewGame(boardSize int, player1Name string, player2Name string) *Game {
 	}
 }
 
+func NewAutoGame(boardSize int, player1Name string, player2Name string) *Game {
+	board := chess.NewChessBoard(boardSize)
+	player1 := player.NewWhitePlayer(player1Name)
+	player2 := player.NewBlackPlayer(player2Name)
+	return &Game{
+		player1:       player1,
+		player2:       player2,
+		chessBoard:    board,
+		isPlayer1Turn: true,
+		gameStart:     time.Now(),
+		autoMoveCount: make(map[string]int),
+		isAutoGame:    true,
+	}
+}
+
 func (g *Game) StartGame() {
 	g.gameStart = time.Now()
+	g.moveTimer = time.Now()
 }
 
 func (g *Game) StopGame() {
@@ -70,6 +88,10 @@ func (g *Game) IsOver() bool {
 	return g.isOver
 }
 
+func (g *Game) IsAutoGame() bool {
+	return g.isAutoGame
+}
+
 func (g *Game) GetWinner() *player.Player {
 	return g.winner
 }
@@ -78,19 +100,22 @@ func (g *Game) MakeMove(fromSig, toSig string) {
 	fromKey := strings.ToUpper(fromSig)
 	toKey := strings.ToUpper(toSig)
 
+	fromFigure := g.chessBoard.GetFigureBySignature(fromKey).Symbol
 	toFigure := g.chessBoard.GetFigureBySignature(toKey)
 	if toFigure != nil {
 		g.CurrentPlayer().SetFigureTook(*toFigure)
 
 		if '♔' == toFigure.Symbol || '♚' == toFigure.Symbol {
-			g.isOver = true;
+			g.isOver = true
 			g.SetWinner(g.CurrentPlayer())
 			g.StopGame()
 		}
 	}
 
 	g.chessBoard.MoveBySignature(fromKey, toKey)
+	g.CurrentPlayer().SetMove(player.Move{PositionFrom: fromKey, PositionTo: toKey, Figure: fromFigure, TimeTook: time.Since(g.moveTimer)})
 	g.isPlayer1Turn = !g.isPlayer1Turn
+	g.moveTimer = time.Now()
 }
 
 func (g *Game) ValidateMove(fromSig, toSig string) (bool, string) {
@@ -156,21 +181,24 @@ func (g *Game) GetAutoMoveCount(playerName string) int {
 }
 
 func (g *Game) DecrementAutoMove(playerName string) bool {
-	if g.autoMoveCount[playerName] > 0 {
-		g.autoMoveCount[playerName]--
-		return g.autoMoveCount[playerName] > 0
+	if !g.isAutoGame {
+		if g.autoMoveCount[playerName] > 0 {
+			g.autoMoveCount[playerName]--
+			return g.autoMoveCount[playerName] > 0
+		}
+		return false
+	} else {
+		return true
 	}
-	return false
 }
 
 func (g *Game) HasAutoMovePending(playerName string) bool {
-	return g.autoMoveCount[playerName] > 0
+	return g.isAutoGame || g.autoMoveCount[playerName] > 0
 }
 
 func (g *Game) ClearAutoMoves() {
 	g.autoMoveCount = make(map[string]int)
 }
-
 
 func (g Game) SerializeToJson() string {
 	jsonData, _ := json.Marshal(g)

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"sync"
+
 	"example.com/go-basic/packages/internal/models/chess"
 	"example.com/go-basic/packages/internal/models/game"
 	"example.com/go-basic/packages/internal/models/player"
@@ -8,7 +10,33 @@ import (
 )
 
 type EntityCollector struct {
-	repo repository.Repo
+	repo *repository.Repo
+	data chan repository.Entity
+}
+
+func (e *EntityCollector) Run(times int) {
+	var producerWg sync.WaitGroup
+	var consumerWg sync.WaitGroup
+
+	for range times {
+		producerWg.Add(1)
+		go func() {
+			defer producerWg.Done()
+			e.CreateRandomEntitiesWithChan()
+		}()
+	}
+
+	for range times {
+		consumerWg.Add(1)
+		go func() {
+			defer consumerWg.Done()
+			e.repo.ConsumeFromChan(e.data)
+		}()
+	}
+
+	producerWg.Wait()
+	close(e.data)
+	consumerWg.Wait()
 }
 
 func (e *EntityCollector) CreateRandomEntities() {
@@ -16,7 +44,7 @@ func (e *EntityCollector) CreateRandomEntities() {
 	cb := chess.ChessBoard{}
 	f := chess.Figure{PieceColor: "black"}
 	g := game.Game{}
-	m := game.Move{}
+	m := player.Move{}
 
 	e.repo.DefineAndAdd(p)
 	e.repo.DefineAndAdd(cb)
@@ -25,15 +53,25 @@ func (e *EntityCollector) CreateRandomEntities() {
 	e.repo.DefineAndAdd(m)
 }
 
+func (e *EntityCollector) CreateRandomEntitiesWithChan() {
+	p := player.Player{}
+	cb := chess.ChessBoard{}
+	f := chess.Figure{PieceColor: "black"}
+	g := game.Game{}
+	m := player.Move{}
+
+	e.data <- p
+	e.data <- cb
+	e.data <- f
+	e.data <- g
+	e.data <- m
+}
+
 func NewCollector() *EntityCollector {
 	ec := EntityCollector{
-		repo: repository.Repo{
-			Players:     make([]player.Player, 0),
-			Figures:     make([]chess.Figure, 0),
-			Games:       make([]game.Game, 0),
-			Moves:       make([]game.Move, 0),
-			ChessBoards: make([]chess.ChessBoard, 0),
-		}}
+		repo: repository.New(),
+		data: make(chan repository.Entity),
+	}
 
 	return &ec
 }

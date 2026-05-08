@@ -10,10 +10,11 @@ type Player struct {
 	name         string
 	figuresColor string
 	figuresTook  []chess.Figure
+	moves        []Move
 }
 
 func NewPlayer(name string, figuresColor string) *Player {
-	p := &Player{name: name, figuresColor: figuresColor}
+	p := &Player{name: name, figuresColor: figuresColor, moves: make([]Move, 0)}
 	return p
 }
 
@@ -27,6 +28,22 @@ func NewBlackPlayer(name string) *Player {
 
 func (p *Player) SetFigureTook(f chess.Figure) {
 	p.figuresTook = append(p.figuresTook, f)
+}
+
+func (p *Player) SetMove(m Move) {
+	p.moves = append(p.moves, m)
+}
+
+func (p Player) GetMoves() []Move {
+	return p.moves
+}
+
+func (p Player) GetLastNMoves(movesAmount int) []Move {
+	if movesAmount >= len(p.moves) {
+		return p.moves
+	}
+	start := len(p.moves) - movesAmount
+	return p.moves[start:]
 }
 
 func (p Player) GetFiguresTook() []chess.Figure {

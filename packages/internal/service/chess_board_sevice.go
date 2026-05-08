@@ -1,36 +1,34 @@
 package service
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"example.com/go-basic/packages/internal/models/chess"
 )
 
-func renderChessBoard(b *chess.ChessBoard) {
+func renderChessBoard(b *chess.ChessBoard) string {
+	var sb strings.Builder
 	sizeWidth := len(strconv.Itoa(b.Size))
 
-	lineCount := 0
-
-	lineCount += renderColumnHeader(b)
+	sb.WriteString(renderColumnHeader(b))
 
 	for i := 0; i < b.Size; i++ {
 
 		rowNum := i + 1
 
-		fmt.Print(strings.Repeat(" ", sizeWidth-len(strconv.Itoa(rowNum))))
-		fmt.Print(rowNum)
+		sb.WriteString(strings.Repeat(" ", sizeWidth-len(strconv.Itoa(rowNum))))
+		sb.WriteString(strconv.Itoa(rowNum))
 
 		for j := 0; j < b.Size; j++ {
 			cell := b.Layout[i][j]
 
 			if cell.Figure == nil {
-				fmt.Print(cell.Color + " " + chess.Reset)
+				sb.WriteString(cell.Color + " " + chess.Reset)
 				continue
 			}
 
-			fmt.Print(
+			sb.WriteString(
 				cell.Color +
 					cell.Figure.PieceColor +
 					string(cell.Figure.Symbol) +
@@ -38,22 +36,22 @@ func renderChessBoard(b *chess.ChessBoard) {
 			)
 		}
 
-		fmt.Print(rowNum)
-		fmt.Println()
-		lineCount++
+		sb.WriteString(strconv.Itoa(rowNum))
+		sb.WriteString("\n")
 	}
 
-	lineCount += renderColumnHeader(b)
+	sb.WriteString(renderColumnHeader(b))
+	return sb.String()
 }
 
-func renderColumnHeader(b *chess.ChessBoard) int {
+func renderColumnHeader(b *chess.ChessBoard) string {
+	var sb strings.Builder
 	maxLen := b.MaxColLabelLen()
-	lineCount := 0
 
 	// каждая строка = один уровень букв
 	for level := 0; level < maxLen; level++ {
 
-		fmt.Print(strings.Repeat(" ", len(strconv.Itoa(b.Size))))
+		sb.WriteString(strings.Repeat(" ", len(strconv.Itoa(b.Size))))
 
 		for col := 0; col < b.Size; col++ {
 			label := chess.ColToLetter(col)
@@ -62,14 +60,13 @@ func renderColumnHeader(b *chess.ChessBoard) int {
 			padding := maxLen - len(label)
 
 			if level < padding {
-				fmt.Print(" ")
+				sb.WriteString(" ")
 			} else {
-				fmt.Print(string(label[level-padding]))
+				sb.WriteString(string(label[level-padding]))
 			}
 		}
-		fmt.Println()
-		lineCount++
+		sb.WriteString("\n")
 	}
 
-	return lineCount
+	return sb.String()
 }

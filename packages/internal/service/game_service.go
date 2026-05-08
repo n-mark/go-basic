@@ -13,6 +13,7 @@ import (
 
 	"example.com/go-basic/packages/internal/models/game"
 	"example.com/go-basic/packages/internal/models/player"
+	"github.com/goombaio/namegenerator"
 )
 
 type MenuItem struct {
@@ -84,18 +85,16 @@ func showMenu(items []MenuItem) int {
 	}
 }
 
-func performAutoMove(chessGame *game.Game, renderFunc func(*game.Game, string, float64)) (string, string, bool) {
+func performAutoMove(chessGame *game.Game) (string, string, bool) {
 	fromMoves, toMoves := chessGame.GetValidMovesForCurrentPlayer()
 	if len(fromMoves) == 0 {
 		return "", "", false
 	}
 
-	// rand.Seed(time.Now().UnixNano())
 	randomIndex := rand.Intn(len(fromMoves))
 	fromSig := fromMoves[randomIndex]
-
-	// board := chessGame.GetChessBoard()
 	targets := toMoves
+
 	if len(targets) == 0 {
 		return "", "", false
 	}
@@ -112,11 +111,11 @@ func performAutoMove(chessGame *game.Game, renderFunc func(*game.Game, string, f
 		}
 	}
 
-	delay := time.Duration(2+rand.Intn(3)) * time.Second
+	delay := time.Duration(1+rand.Intn(6)) * time.Second
 
 	// Рендерим с статусом "думаю"
-	if renderFunc != nil {
-		renderFunc(chessGame, "thinking", delay.Seconds())
+	if !chessGame.IsAutoGame() {
+		renderWithTitle(chessGame, "thinking")
 	}
 
 	time.Sleep(delay)
@@ -187,21 +186,28 @@ func handleAutoMove(chessGame *game.Game) bool {
 	return false
 }
 
-func renderWithTitle(g *game.Game, status string, seconds float64) {
+func renderWithTitle(g *game.Game, status string) {
+	fmt.Print(stringifyGameLayout(g, status))
+}
+
+func stringifyGameLayout(g *game.Game, status string) string {
+	var sb strings.Builder
 	player1 := g.GetPlayer1()
 	player2 := g.GetPlayer2()
 
-	renderPlayerHeader(g, player2, status, seconds)
-	renderChessBoard(g.GetChessBoard())
-	renderPlayerHeader(g, player1, status, seconds)
+	sb.WriteString(renderPlayerHeader(g, player2, status))
+	sb.WriteString(renderChessBoard(g.GetChessBoard()))
+	sb.WriteString(renderPlayerHeader(g, player1, status))
 
-	fmt.Println()
+	return sb.String()
 }
 
 func executeAutoMoves(chessGame *game.Game) {
 	// Выполняем автоходы по очереди — каждый текущий игрок делает свой ход
 	for !chessGame.IsOver() {
-		clearScreen()
+		if !chessGame.IsAutoGame() {
+			clearScreen()
+		}
 		currentPlayer := chessGame.CurrentPlayerName()
 
 		// Если у текущего игрока нет автоходов — выходим
@@ -209,10 +215,10 @@ func executeAutoMoves(chessGame *game.Game) {
 			break
 		}
 
-		fromSig, toSig, ok := performAutoMove(chessGame, renderWithTitle)
+		fromSig, toSig, ok := performAutoMove(chessGame)
 
 		if !ok {
-			fmt.Println("Нет доступных ходов!")
+			// fmt.Println("Нет доступных ходов!")
 			chessGame.DecrementAutoMove(currentPlayer)
 			break
 		}
@@ -223,16 +229,66 @@ func executeAutoMoves(chessGame *game.Game) {
 		}
 
 		chessGame.MakeMove(fromSig, toSig)
-		fmt.Printf("\x1b[36mАвтоход %s: %s -> %s\x1b[0m\n", currentPlayer, fromSig, toSig)
-
 		chessGame.DecrementAutoMove(currentPlayer)
 
-		clearScreen()
-		renderWithTitle(chessGame, "", 0)
+		if !chessGame.IsAutoGame() {
+			clearScreen()
+			renderWithTitle(chessGame, "")
+		}
 	}
 }
 
 func StartGame() {
+	var boardsAmount int
+	fmt.Print("Введите количество досок для игры: ")
+	fmt.Scan(&boardsAmount)
+
+	if boardsAmount > 1 {
+		startMultipleGames(boardsAmount)
+	} else {
+		startSingleGame()
+	}
+}
+
+func startMultipleGames(boardsAmount int) {
+	games := make([]*game.Game, 0)
+
+	seed := time.Now().UTC().UnixNano()
+	nameGenerator := namegenerator.NewNameGenerator(seed)
+
+	for range boardsAmount {
+		size := 8
+		player1 := nameGenerator.Generate()
+		player2 := nameGenerator.Generate()
+
+		chessGame := game.NewAutoGame(size, player1, player2)
+		games = append(games, chessGame)
+		go startAutoGame(chessGame)
+	}
+
+	for {
+		allGamesOver := true
+		clearScreen()
+		for _, game := range games {
+			fmt.Println(stringifyGameLayout(game, "thinking"))
+			allGamesOver = allGamesOver && game.IsOver()
+		}
+		if allGamesOver {
+			break
+		}
+		time.Sleep(time.Second)
+		clearScreen()
+	}
+}
+
+func startAutoGame(chessGame *game.Game) {
+	chessGame.StartGame()
+	for !chessGame.IsOver() {
+		executeAutoMoves(chessGame)
+	}
+}
+
+func startSingleGame() {
 	var sizeStr string
 	var player1 string
 	var player2 string
@@ -264,7 +320,7 @@ func StartGame() {
 
 	for !chessGame.IsOver() {
 		clearScreen()
-		renderWithTitle(chessGame, "", 0)
+		renderWithTitle(chessGame, "")
 
 		selected := showMenu(menuItems)
 		actionResult := menuItems[selected].Action(chessGame, reader)
@@ -307,31 +363,44 @@ func StartGame() {
 }
 
 func renderScreen(g *game.Game) {
-	renderWithTitle(g, "", 0)
+	renderWithTitle(g, "")
 }
 
-func renderPlayerHeader(g *game.Game, p *player.Player, status string, seconds float64) {
+func renderPlayerHeader(g *game.Game, p *player.Player, status string) string {
+	var sb strings.Builder
 	var color string
-		if ("black" == p.GetFiguresColor()) {
-			color = "черные"
-		} else {
-			color = "белые"
-		}
-
-	fmt.Println("═══════════════════════════════════════")
-	if g.CurrentPlayerName() == p.GetName() {
-		fmt.Print("> ")
+	if "black" == p.GetFiguresColor() {
+		color = "черные"
 	} else {
-		fmt.Print("  ")
+		color = "белые"
 	}
-	fmt.Printf("%s (%s)", p.GetName(), color)
+
+	sb.WriteString("═══════════════════════════════════════\n")
+	if !g.IsOver() {
+		if g.CurrentPlayerName() == p.GetName() {
+			sb.WriteString("> ")
+		} else {
+			sb.WriteString("  ")
+		}
+	} else {
+		if g.GetWinner() == p {
+			sb.WriteString("Игра окончена. Победил ")
+		}
+	}
+
+	sb.WriteString(fmt.Sprintf("%s (%s)", p.GetName(), color))
+	if g.CurrentPlayer() != p && !g.IsOver() && len(p.GetMoves()) > 0 {
+		sb.WriteString(fmt.Sprintf(" %s", p.GetLastNMoves(1)))
+	}
 	if g.GetAutoMoveCount(p.GetName()) > 0 {
-		fmt.Printf(" Кол-во автоходов: %d", g.GetAutoMoveCount(p.GetName()))
-		fmt.Print(" ")
+		sb.WriteString(fmt.Sprintf(" Кол-во автоходов: %d", g.GetAutoMoveCount(p.GetName())))
+		sb.WriteString(" ")
 	}
-	if status == "thinking" && g.CurrentPlayerName() == p.GetName() {
-		fmt.Printf(" - думаю %.0f сек...", seconds)
+	if status == "thinking" && g.CurrentPlayerName() == p.GetName() && !g.IsOver() {
+		sb.WriteString(" - думаю...")
 	}
-	fmt.Println()
-	fmt.Println("═══════════════════════════════════════")
+	sb.WriteString("\n")
+	sb.WriteString("═══════════════════════════════════════\n")
+
+	return sb.String()
 }
