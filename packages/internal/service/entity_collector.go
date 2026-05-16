@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"sync"
 
 	"example.com/go-basic/packages/internal/models/chess"
@@ -14,7 +15,7 @@ type EntityCollector struct {
 	data chan repository.Entity
 }
 
-func (e *EntityCollector) Run(times int) {
+func (e *EntityCollector) Run(ctx context.Context, times int) {
 	var producerWg sync.WaitGroup
 	var consumerWg sync.WaitGroup
 
@@ -22,6 +23,11 @@ func (e *EntityCollector) Run(times int) {
 		producerWg.Add(1)
 		go func() {
 			defer producerWg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			e.CreateRandomEntitiesWithChan()
 		}()
 	}
@@ -30,13 +36,30 @@ func (e *EntityCollector) Run(times int) {
 		consumerWg.Add(1)
 		go func() {
 			defer consumerWg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			e.repo.ConsumeFromChan(e.data)
 		}()
 	}
 
-	producerWg.Wait()
-	close(e.data)
-	consumerWg.Wait()
+	go func() {
+		producerWg.Wait()
+		close(e.data)
+	}()
+
+	consumerWgDone := make(chan struct{})
+	go func() {
+		consumerWg.Wait()
+		close(consumerWgDone)
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-consumerWgDone:
+	}
 }
 
 func (e *EntityCollector) CreateRandomEntities() {

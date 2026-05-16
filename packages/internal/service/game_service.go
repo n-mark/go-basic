@@ -2,6 +2,7 @@ package service
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -55,37 +56,48 @@ func renderMenu(selected int, items []MenuItem) {
 	fmt.Println("\x1b[90m(стрелки или W/S/A/D, Enter - подтвердить)\x1b[0m")
 }
 
-func showMenu(items []MenuItem) int {
+func showMenu(ctx context.Context, items []MenuItem) int {
 	selected := 0
 
 	for {
 		renderMenu(selected, items)
-		key := readKey()
+		// Ждём ввода или отмены контекста
+		keyCh := make(chan string, 1)
+		go func() {
+			keyCh <- readKey()
+		}()
 
-		switch key {
-		case "\x1b[A", "w", "W", "й", "Й":
-			selected = (selected - 1 + len(items)) % len(items)
-		case "\x1b[B", "s", "S", "ы", "Ы":
-			selected = (selected + 1) % len(items)
-		case "\x1b[C", "d", "D", "в", "В":
-			selected = (selected + 1) % len(items)
-		case "\x1b[D", "a", "A", "ф", "Ф":
-			selected = (selected - 1 + len(items)) % len(items)
-		case "\n", "\r":
-			return selected
-		case "1":
-			return 0
-		case "2":
-			return 1
-		case "3":
-			return 2
+		select {
+		case <-ctx.Done():
+			return -1
+		case key := <-keyCh:
+			switch key {
+			case "\u0003":
+				return -1
+			case "\x1b[A", "w", "W", "й", "Й":
+				selected = (selected - 1 + len(items)) % len(items)
+			case "\x1b[B", "s", "S", "ы", "Ы":
+				selected = (selected + 1) % len(items)
+			case "\x1b[C", "d", "D", "в", "В":
+				selected = (selected + 1) % len(items)
+			case "\x1b[D", "a", "A", "ф", "Ф":
+				selected = (selected - 1 + len(items)) % len(items)
+			case "\n", "\r":
+				return selected
+			case "1":
+				return 0
+			case "2":
+				return 1
+			case "3":
+				return 2
+			}
 		}
 
 		fmt.Printf("\x1b[%dA", 2)
 	}
 }
 
-func performAutoMove(chessGame *game.Game) (string, string, bool) {
+func performAutoMove(ctx context.Context, chessGame *game.Game) (string, string, bool) {
 	fromMoves, toMoves := chessGame.GetValidMovesForCurrentPlayer()
 	if len(fromMoves) == 0 {
 		return "", "", false
@@ -118,7 +130,11 @@ func performAutoMove(chessGame *game.Game) (string, string, bool) {
 		renderWithTitle(chessGame, "thinking")
 	}
 
-	time.Sleep(delay)
+	select {
+	case <-ctx.Done():
+		return "", "", false
+	case <-time.After(delay):
+	}
 
 	return fromSig, randomTarget, true
 }
@@ -202,9 +218,15 @@ func stringifyGameLayout(g *game.Game, status string) string {
 	return sb.String()
 }
 
-func executeAutoMoves(chessGame *game.Game) {
+func executeAutoMoves(ctx context.Context, chessGame *game.Game) {
 	// Выполняем автоходы по очереди — каждый текущий игрок делает свой ход
 	for !chessGame.IsOver() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		if !chessGame.IsAutoGame() {
 			clearScreen()
 		}
@@ -215,7 +237,7 @@ func executeAutoMoves(chessGame *game.Game) {
 			break
 		}
 
-		fromSig, toSig, ok := performAutoMove(chessGame)
+		fromSig, toSig, ok := performAutoMove(ctx, chessGame)
 
 		if !ok {
 			// fmt.Println("Нет доступных ходов!")
@@ -238,19 +260,19 @@ func executeAutoMoves(chessGame *game.Game) {
 	}
 }
 
-func StartGame() {
+func StartGame(ctx context.Context) {
 	var boardsAmount int
 	fmt.Print("Введите количество досок для игры: ")
 	fmt.Scan(&boardsAmount)
 
 	if boardsAmount > 1 {
-		startMultipleGames(boardsAmount)
+		startMultipleGames(ctx, boardsAmount)
 	} else {
-		startSingleGame()
+		startSingleGame(ctx)
 	}
 }
 
-func startMultipleGames(boardsAmount int) {
+func startMultipleGames(ctx context.Context, boardsAmount int) {
 	games := make([]*game.Game, 0)
 
 	seed := time.Now().UTC().UnixNano()
@@ -263,10 +285,15 @@ func startMultipleGames(boardsAmount int) {
 
 		chessGame := game.NewAutoGame(size, player1, player2)
 		games = append(games, chessGame)
-		go startAutoGame(chessGame)
+		go startAutoGame(ctx, chessGame)
 	}
 
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		allGamesOver := true
 		clearScreen()
 		for _, game := range games {
@@ -281,14 +308,19 @@ func startMultipleGames(boardsAmount int) {
 	}
 }
 
-func startAutoGame(chessGame *game.Game) {
+func startAutoGame(ctx context.Context, chessGame *game.Game) {
 	chessGame.StartGame()
 	for !chessGame.IsOver() {
-		executeAutoMoves(chessGame)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		executeAutoMoves(ctx, chessGame)
 	}
 }
 
-func startSingleGame() {
+func startSingleGame(ctx context.Context) {
 	var sizeStr string
 	var player1 string
 	var player2 string
@@ -319,15 +351,27 @@ func startSingleGame() {
 	}
 
 	for !chessGame.IsOver() {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Завершаем игру...")
+			chessGame.StopGame()
+			return
+		default:
+		}
 		clearScreen()
 		renderWithTitle(chessGame, "")
 
-		selected := showMenu(menuItems)
+		selected := showMenu(ctx, menuItems)
+		if selected < 0 {
+			fmt.Println("Завершаем игру...")
+			chessGame.StopGame()
+			return
+		}
 		actionResult := menuItems[selected].Action(chessGame, reader)
 
 		// Пункт "Автоход" (индекс 2) возвращает false чтобы сразу выполнить автоходы
 		if selected == 2 && !actionResult {
-			executeAutoMoves(chessGame)
+			executeAutoMoves(ctx, chessGame)
 			if chessGame.IsOver() {
 				break
 			}
@@ -345,7 +389,7 @@ func startSingleGame() {
 		// Проверяем, есть ли у текущего игрока автоходы
 		currentPlayer := chessGame.CurrentPlayerName()
 		if chessGame.HasAutoMovePending(currentPlayer) {
-			executeAutoMoves(chessGame)
+			executeAutoMoves(ctx, chessGame)
 			if chessGame.IsOver() {
 				break
 			}
