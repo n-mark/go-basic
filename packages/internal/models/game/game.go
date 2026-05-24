@@ -200,7 +200,6 @@ func (g *Game) ClearAutoMoves() {
 	g.autoMoveCount = make(map[string]int)
 }
 
-func (g Game) SerializeToJson() string {
-	jsonData, _ := json.Marshal(g)
-	return string(jsonData)
+func (g Game) SerializeToJson() ([]byte, error) {
+	return json.Marshal(g)
 }

@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	// "time"
 
 	"example.com/go-basic/packages/internal/service"
 )
@@ -28,6 +27,5 @@ func main() {
 	service.StartGame(ctx)
 
 	ec := service.NewCollector()
-	ec.Run(ctx, rand.Intn(3)+3)
-
+	ec.Run(ctx, (rand.Intn(3)+3))
 }

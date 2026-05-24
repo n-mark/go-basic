@@ -7,14 +7,14 @@ import (
 )
 
 type Player struct {
-	name         string
-	figuresColor string
-	figuresTook  []chess.Figure
-	moves        []Move
+	Name         string	`json:"name"`
+	FiguresColor string `json:"figures_color"`
+	FiguresTook  []chess.Figure `json:"figures_took"`
+	Moves        []Move `json:"moves"`
 }
 
 func NewPlayer(name string, figuresColor string) *Player {
-	p := &Player{name: name, figuresColor: figuresColor, moves: make([]Move, 0)}
+	p := &Player{Name: name, FiguresColor: figuresColor, Moves: make([]Move, 0)}
 	return p
 }
 
@@ -27,42 +27,41 @@ func NewBlackPlayer(name string) *Player {
 }
 
 func (p *Player) SetFigureTook(f chess.Figure) {
-	p.figuresTook = append(p.figuresTook, f)
+	p.FiguresTook = append(p.FiguresTook, f)
 }
 
 func (p *Player) SetMove(m Move) {
-	p.moves = append(p.moves, m)
+	p.Moves = append(p.Moves, m)
 }
 
 func (p Player) GetMoves() []Move {
-	return p.moves
+	return p.Moves
 }
 
 func (p Player) GetLastNMoves(movesAmount int) []Move {
-	if movesAmount >= len(p.moves) {
-		return p.moves
+	if movesAmount >= len(p.Moves) {
+		return p.Moves
 	}
-	start := len(p.moves) - movesAmount
-	return p.moves[start:]
+	start := len(p.Moves) - movesAmount
+	return p.Moves[start:]
 }
 
 func (p Player) GetFiguresTook() []chess.Figure {
-	return p.figuresTook
+	return p.FiguresTook
 }
 
 func (p Player) String() string {
-	return p.name
+	return p.Name
 }
 
 func (p Player) GetFiguresColor() string {
-	return p.figuresColor
+	return p.FiguresColor
 }
 
 func (p Player) GetName() string {
-	return p.name
+	return p.Name
 }
 
-func (p Player) SerializeToJson() string {
-	jsonData, _ := json.Marshal(p)
-	return string(jsonData)
+func (p Player) SerializeToJson() ([]byte, error) {
+	return json.Marshal(p)
 }

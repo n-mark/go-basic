@@ -60,6 +60,7 @@ func (e *EntityCollector) Run(ctx context.Context, times int) {
 	case <-ctx.Done():
 	case <-consumerWgDone:
 	}
+	e.repo.CloseStorage()
 }
 
 func (e *EntityCollector) CreateRandomEntities() {
@@ -91,8 +92,10 @@ func (e *EntityCollector) CreateRandomEntitiesWithChan() {
 }
 
 func NewCollector() *EntityCollector {
+	sp := repository.NewLocalStorageProvider();
+
 	ec := EntityCollector{
-		repo: repository.New(),
+		repo: repository.New(sp),
 		data: make(chan repository.Entity),
 	}
 

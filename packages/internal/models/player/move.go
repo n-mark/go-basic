@@ -8,15 +8,14 @@ import (
 )
 
 type Move struct {
-	TimeTook     time.Duration
-	PositionFrom string
-	PositionTo   string
-	Figure       rune
+	TimeTook     time.Duration `json:"time_took"`
+	PositionFrom string `json:"position_from"`
+	PositionTo   string `json:"position_to"`
+	Figure       rune `json:"figure"`
 }
 
-func (m Move) SerializeToJson() string {
-	jsonData, _ := json.Marshal(m)
-	return string(jsonData)
+func (m Move) SerializeToJson() ([]byte, error) {
+	return json.Marshal(m)
 }
 
 func (m Move) String() string {

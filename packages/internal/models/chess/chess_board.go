@@ -153,7 +153,6 @@ func (b *ChessBoard) GetAllValidMoves(color string) ([]string, []string) {
 	return fromMoves, toMoves
 }
 
-func (ch ChessBoard) SerializeToJson() string {
-	jsonData, _ := json.Marshal(ch)
-	return string(jsonData)
+func (ch ChessBoard) SerializeToJson() ([]byte, error) {
+	return json.Marshal(ch)
 }
