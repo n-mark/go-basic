@@ -8,11 +8,15 @@ import (
 )
 
 type Move struct {
+	ID           int           `json:"id"`
 	TimeTook     time.Duration `json:"time_took"`
-	PositionFrom string `json:"position_from"`
-	PositionTo   string `json:"position_to"`
-	Figure       rune `json:"figure"`
+	PositionFrom string        `json:"position_from"`
+	PositionTo   string        `json:"position_to"`
+	Figure       rune          `json:"figure"`
 }
+
+func (m Move) GetID() int    { return m.ID }
+func (m *Move) SetID(id int) { m.ID = id }
 
 func (m Move) SerializeToJson() ([]byte, error) {
 	return json.Marshal(m)

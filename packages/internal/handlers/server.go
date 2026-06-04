@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	// "net/http"
-
 	"example.com/go-basic/packages/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -26,9 +24,14 @@ func (s *Server) RunServer() {
 	game.POST("/:id/automove", s.gameHandler.AutoMove)
 	game.GET("/:id", s.gameHandler.DisplayBoard)
 
+	s.itemHandler.RegisterRoutes(v1)
+
 	router.Run(":8080")
 }
 
-func InitServer(s *service.GameServiceNew) *Server {
-	return &Server{gameHandler: NewGameHandler(s)}
+func InitServer(gs *service.GameServiceNew, entityService *service.EntityService) *Server {
+	return &Server{
+		gameHandler: NewGameHandler(gs),
+		itemHandler: NewItemHandler(entityService),
+	}
 }

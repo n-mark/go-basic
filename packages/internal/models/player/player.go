@@ -7,11 +7,15 @@ import (
 )
 
 type Player struct {
-	Name         string	`json:"name"`
-	FiguresColor string `json:"figures_color"`
+	ID           int            `json:"id"`
+	Name         string         `json:"name"`
+	FiguresColor string         `json:"figures_color"`
 	FiguresTook  []chess.Figure `json:"figures_took"`
-	Moves        []Move `json:"moves"`
+	Moves        []Move         `json:"moves"`
 }
+
+func (p Player) GetID() int    { return p.ID }
+func (p *Player) SetID(id int) { p.ID = id }
 
 func NewPlayer(name string, figuresColor string) *Player {
 	p := &Player{Name: name, FiguresColor: figuresColor, Moves: make([]Move, 0)}
