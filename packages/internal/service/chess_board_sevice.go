@@ -15,7 +15,7 @@ func renderChessBoard(b *chess.ChessBoard) string {
 
 	for i := 0; i < b.Size; i++ {
 
-		rowNum := i + 1
+		rowNum := b.Size - i
 
 		sb.WriteString(strings.Repeat(" ", sizeWidth-len(strconv.Itoa(rowNum))))
 		sb.WriteString(strconv.Itoa(rowNum))

@@ -58,6 +58,7 @@ func (g *Game) StartGame() {
 }
 
 func (g *Game) StopGame() {
+	g.isOver = true
 	g.gameEnd = time.Now()
 }
 

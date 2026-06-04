@@ -17,9 +17,17 @@ import (
 	"github.com/goombaio/namegenerator"
 )
 
+type GameService struct {
+	Games map[int64]*game.Game
+}
+
 type MenuItem struct {
 	Label  string
 	Action func(*game.Game, *bufio.Reader) bool
+}
+
+func NewGameService() *GameService {
+	return &GameService{Games: make(map[int64]*game.Game)}
 }
 
 func clearScreen() {
@@ -203,10 +211,10 @@ func handleAutoMove(chessGame *game.Game) bool {
 }
 
 func renderWithTitle(g *game.Game, status string) {
-	fmt.Print(stringifyGameLayout(g, status))
+	fmt.Print(StringifyGameLayout(g, status))
 }
 
-func stringifyGameLayout(g *game.Game, status string) string {
+func StringifyGameLayout(g *game.Game, status string) string {
 	var sb strings.Builder
 	player1 := g.GetPlayer1()
 	player2 := g.GetPlayer2()
@@ -218,7 +226,7 @@ func stringifyGameLayout(g *game.Game, status string) string {
 	return sb.String()
 }
 
-func executeAutoMoves(ctx context.Context, chessGame *game.Game) {
+func ExecuteAutoMoves(ctx context.Context, chessGame *game.Game) {
 	// Выполняем автоходы по очереди — каждый текущий игрок делает свой ход
 	for !chessGame.IsOver() {
 		select {
@@ -297,7 +305,7 @@ func startMultipleGames(ctx context.Context, boardsAmount int) {
 		allGamesOver := true
 		clearScreen()
 		for _, game := range games {
-			fmt.Println(stringifyGameLayout(game, "thinking"))
+			fmt.Println(StringifyGameLayout(game, "thinking"))
 			allGamesOver = allGamesOver && game.IsOver()
 		}
 		if allGamesOver {
@@ -316,8 +324,19 @@ func startAutoGame(ctx context.Context, chessGame *game.Game) {
 			return
 		default:
 		}
-		executeAutoMoves(ctx, chessGame)
+		ExecuteAutoMoves(ctx, chessGame)
 	}
+}
+
+func (gs *GameService) StartWebGame(gameId int64, size int, player1 string, player2 string) {
+	fmt.Println(gs == nil)
+
+	if gs != nil {
+		fmt.Println(gs.Games == nil)
+	}
+	chessGame := game.NewGame(size, player1, player2)
+	gs.Games[gameId] = chessGame
+	chessGame.StartGame()
 }
 
 func startSingleGame(ctx context.Context) {
@@ -371,7 +390,7 @@ func startSingleGame(ctx context.Context) {
 
 		// Пункт "Автоход" (индекс 2) возвращает false чтобы сразу выполнить автоходы
 		if selected == 2 && !actionResult {
-			executeAutoMoves(ctx, chessGame)
+			ExecuteAutoMoves(ctx, chessGame)
 			if chessGame.IsOver() {
 				break
 			}
@@ -389,7 +408,7 @@ func startSingleGame(ctx context.Context) {
 		// Проверяем, есть ли у текущего игрока автоходы
 		currentPlayer := chessGame.CurrentPlayerName()
 		if chessGame.HasAutoMovePending(currentPlayer) {
-			executeAutoMoves(ctx, chessGame)
+			ExecuteAutoMoves(ctx, chessGame)
 			if chessGame.IsOver() {
 				break
 			}

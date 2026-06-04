@@ -56,7 +56,7 @@ func initCells(size int) ([][]*cell, map[string]*cell) {
 				color = darkCell
 			}
 
-			cellSignature := getSignature(i, j)
+			cellSignature := getSignature(i, j, size)
 
 			c := &cell{Figure: figure,
 				Color:     color,
@@ -74,8 +74,11 @@ func initCells(size int) ([][]*cell, map[string]*cell) {
 	return layout, cellsMap
 }
 
-func getSignature(row int, col int) string {
-	return ColToLetter(col) + strconv.Itoa(row+1)
+// getSignature возвращает сигнатуру клетки в шахматной нотации.
+// Нумерация строк инвертирована относительно индекса в Layout:
+// row=0 (верх доски, чёрные) -> size, row=size-1 (низ, белые) -> 1.
+func getSignature(row int, col int, size int) string {
+	return ColToLetter(col) + strconv.Itoa(size-row)
 }
 
 func ColToLetter(col int) string {
