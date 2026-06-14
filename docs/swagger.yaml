@@ -1,0 +1,749 @@
+basePath: /api/v1
+definitions:
+  example_com_go-basic_packages_internal_models_chess.Figure:
+    properties:
+      game_color:
+        type: string
+      id:
+        type: integer
+      piece_color:
+        type: string
+      symbol:
+        type: integer
+    type: object
+  example_com_go-basic_packages_internal_models_player.Move:
+    properties:
+      figure:
+        type: integer
+      id:
+        type: integer
+      position_from:
+        type: string
+      position_to:
+        type: string
+      time_took:
+        $ref: '#/definitions/time.Duration'
+    type: object
+  example_com_go-basic_packages_internal_models_player.Player:
+    properties:
+      figures_color:
+        type: string
+      figures_took:
+        items:
+          $ref: '#/definitions/example_com_go-basic_packages_internal_models_chess.Figure'
+        type: array
+      id:
+        type: integer
+      moves:
+        items:
+          $ref: '#/definitions/example_com_go-basic_packages_internal_models_player.Move'
+        type: array
+      name:
+        type: string
+    type: object
+  packages_internal_handlers.Err:
+    properties:
+      err:
+        type: string
+    type: object
+  packages_internal_handlers.autoMove:
+    properties:
+      moves_amount:
+        type: integer
+      player:
+        type: string
+    type: object
+  packages_internal_handlers.createGame:
+    properties:
+      board_size:
+        type: integer
+      player_one_name:
+        type: string
+      player_two_name:
+        type: string
+    type: object
+  packages_internal_handlers.figureDTO:
+    properties:
+      game_color:
+        type: string
+      piece_color:
+        type: string
+      symbol:
+        type: string
+    required:
+    - game_color
+    - piece_color
+    - symbol
+    type: object
+  packages_internal_handlers.move:
+    properties:
+      player:
+        type: string
+      position_from:
+        type: string
+      position_to:
+        type: string
+    type: object
+  packages_internal_handlers.moveDTO:
+    properties:
+      figure:
+        type: string
+      position_from:
+        type: string
+      position_to:
+        type: string
+      time_took:
+        type: integer
+    required:
+    - figure
+    - position_from
+    - position_to
+    type: object
+  packages_internal_handlers.playerDTO:
+    properties:
+      figures_color:
+        type: string
+      figures_took:
+        items:
+          $ref: '#/definitions/example_com_go-basic_packages_internal_models_chess.Figure'
+        type: array
+      moves:
+        items:
+          $ref: '#/definitions/example_com_go-basic_packages_internal_models_player.Move'
+        type: array
+      name:
+        type: string
+    required:
+    - figures_color
+    - name
+    type: object
+  packages_internal_handlers.response:
+    properties:
+      game_id:
+        type: integer
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  packages_internal_handlers.surrender:
+    properties:
+      player:
+        type: string
+    type: object
+  time.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    format: int64
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
+host: localhost:8080
+info:
+  contact: {}
+  description: Web API для управления шахматными партиями и сущностями (игроки, фигуры,
+    ходы).
+  termsOfService: http://swagger.io/terms/
+  title: Chess Game API
+  version: "1.0"
+paths:
+  /figure:
+    post:
+      consumes:
+      - application/json
+      description: Создает новую фигуру
+      parameters:
+      - description: Данные фигуры
+        in: body
+        name: figure
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.figureDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Создать фигуру
+      tags:
+      - figures
+  /figure/{id}:
+    delete:
+      description: Удаляет фигуру по ID
+      parameters:
+      - description: ID фигуры
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Удалить фигуру
+      tags:
+      - figures
+    get:
+      description: Возвращает фигуру по ID
+      parameters:
+      - description: ID фигуры
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/example_com_go-basic_packages_internal_models_chess.Figure'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Получить фигуру
+      tags:
+      - figures
+    put:
+      consumes:
+      - application/json
+      description: Обновляет фигуру по ID
+      parameters:
+      - description: ID фигуры
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новые данные
+        in: body
+        name: figure
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.figureDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Обновить фигуру
+      tags:
+      - figures
+  /figures:
+    get:
+      description: Возвращает все сохраненные фигуры
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/example_com_go-basic_packages_internal_models_chess.Figure'
+            type: array
+      summary: Список фигур
+      tags:
+      - figures
+  /game:
+    post:
+      consumes:
+      - application/json
+      description: Создает новую шахматную партию между двумя игроками
+      parameters:
+      - description: Параметры новой игры
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.createGame'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Новая игра
+      tags:
+      - game
+  /game/{id}:
+    get:
+      description: Возвращает текущее состояние доски в JSON или HTML (зависит от
+        Accept-заголовка)
+      parameters:
+      - description: ID игры
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      - text/html
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Отображение доски
+      tags:
+      - game
+  /game/{id}/automove:
+    post:
+      consumes:
+      - application/json
+      description: Запускает указанное количество автоматических ходов от лица игрока
+      parameters:
+      - description: ID игры
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Параметры автоматических ходов
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.autoMove'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Автоход
+      tags:
+      - game
+  /game/{id}/move:
+    post:
+      consumes:
+      - application/json
+      description: Выполняет ход указанного игрока в активной партии
+      parameters:
+      - description: ID игры
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Параметры хода
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.move'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Сделать ход
+      tags:
+      - game
+  /game/{id}/stop:
+    post:
+      description: Останавливает партию без объявления победителя
+      parameters:
+      - description: ID игры
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Остановить игру
+      tags:
+      - game
+  /game/{id}/surrender:
+    post:
+      consumes:
+      - application/json
+      description: Игрок сдается, партия завершается победой соперника
+      parameters:
+      - description: ID игры
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Кто сдается
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.surrender'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Сдаться
+      tags:
+      - game
+  /move:
+    post:
+      consumes:
+      - application/json
+      description: Создает новый ход в хранилище
+      parameters:
+      - description: Данные хода
+        in: body
+        name: move
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.moveDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Создать ход
+      tags:
+      - moves
+  /move/{id}:
+    delete:
+      description: Удаляет ход по ID
+      parameters:
+      - description: ID хода
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Удалить ход
+      tags:
+      - moves
+    get:
+      description: Возвращает ход по ID
+      parameters:
+      - description: ID хода
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/example_com_go-basic_packages_internal_models_player.Move'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Получить ход
+      tags:
+      - moves
+    put:
+      consumes:
+      - application/json
+      description: Обновляет ход по ID
+      parameters:
+      - description: ID хода
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новые данные хода
+        in: body
+        name: move
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.moveDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Обновить ход
+      tags:
+      - moves
+  /moves:
+    get:
+      description: Возвращает все сохраненные ходы
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/example_com_go-basic_packages_internal_models_player.Move'
+            type: array
+      summary: Список ходов
+      tags:
+      - moves
+  /player:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового игрока в хранилище
+      parameters:
+      - description: Данные игрока
+        in: body
+        name: player
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.playerDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Создать игрока
+      tags:
+      - players
+  /player/{id}:
+    delete:
+      description: Удаляет игрока по ID
+      parameters:
+      - description: ID игрока
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Удалить игрока
+      tags:
+      - players
+    get:
+      description: Возвращает игрока по ID
+      parameters:
+      - description: ID игрока
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/example_com_go-basic_packages_internal_models_player.Player'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Получить игрока
+      tags:
+      - players
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные игрока по ID
+      parameters:
+      - description: ID игрока
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновленные данные
+        in: body
+        name: player
+        required: true
+        schema:
+          $ref: '#/definitions/packages_internal_handlers.playerDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/packages_internal_handlers.Err'
+      summary: Обновить игрока
+      tags:
+      - players
+  /players:
+    get:
+      description: Возвращает всех сохраненных игроков
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/example_com_go-basic_packages_internal_models_player.Player'
+            type: array
+      summary: Список игроков
+      tags:
+      - players
+schemes:
+- http
+swagger: "2.0"

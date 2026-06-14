@@ -1,17 +1,23 @@
 package handlers
 
 import (
+	_ "example.com/go-basic/docs" // сгенерированная swag init документация
 	"example.com/go-basic/packages/internal/service"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Server struct {
-	gameHandler *GameHandler
-	itemHandler *ItemHandler
+	gameHandler   *GameHandler
+	itemHandler   *ItemHandler
 }
 
 func (s *Server) RunServer() {
 	router := gin.Default()
+
+	// Swagger UI: http://localhost:8080/swagger/index.html
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := router.Group("/api")
 	v1 := api.Group("/v1")
@@ -31,7 +37,7 @@ func (s *Server) RunServer() {
 
 func InitServer(gs *service.GameServiceNew, entityService *service.EntityService) *Server {
 	return &Server{
-		gameHandler: NewGameHandler(gs),
-		itemHandler: NewItemHandler(entityService),
+		gameHandler:   NewGameHandler(gs),
+		itemHandler:   NewItemHandler(entityService),
 	}
 }

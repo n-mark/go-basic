@@ -67,6 +67,17 @@ func (d playerDTO) toModel() player.Player {
 	}
 }
 
+// CreatePlayer godoc
+// @Summary      Создать игрока
+// @Description  Создает нового игрока в хранилище
+// @Tags         players
+// @Accept       json
+// @Produce      json
+// @Param        player body     playerDTO true  "Данные игрока"
+// @Success      201    {object} map[string]int
+// @Failure      400    {object} Err
+// @Failure      500    {object} Err
+// @Router       /player [post]
 func (h *ItemHandler) CreatePlayer(ctx *gin.Context) {
 	var dto playerDTO
 	if err := ctx.ShouldBindJSON(&dto); err != nil {
@@ -81,6 +92,18 @@ func (h *ItemHandler) CreatePlayer(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
+// UpdatePlayer godoc
+// @Summary      Обновить игрока
+// @Description  Обновляет данные игрока по ID
+// @Tags         players
+// @Accept       json
+// @Produce      json
+// @Param        id     path     int        true  "ID игрока"
+// @Param        player body     playerDTO  true  "Обновленные данные"
+// @Success      200    {object} map[string]int
+// @Failure      400    {object} Err
+// @Failure      404    {object} Err
+// @Router       /player/{id} [put]
 func (h *ItemHandler) UpdatePlayer(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -98,10 +121,27 @@ func (h *ItemHandler) UpdatePlayer(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"id": id})
 }
 
+// ListPlayers godoc
+// @Summary      Список игроков
+// @Description  Возвращает всех сохраненных игроков
+// @Tags         players
+// @Produce      json
+// @Success      200  {array}  player.Player
+// @Router       /players [get]
 func (h *ItemHandler) ListPlayers(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, h.entityService.ListPlayers())
 }
 
+// GetPlayer godoc
+// @Summary      Получить игрока
+// @Description  Возвращает игрока по ID
+// @Tags         players
+// @Produce      json
+// @Param        id   path     int  true  "ID игрока"
+// @Success      200  {object} player.Player
+// @Failure      400  {object} Err
+// @Failure      404  {object} Err
+// @Router       /player/{id} [get]
 func (h *ItemHandler) GetPlayer(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -115,6 +155,16 @@ func (h *ItemHandler) GetPlayer(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, p)
 }
 
+// DeletePlayer godoc
+// @Summary      Удалить игрока
+// @Description  Удаляет игрока по ID
+// @Tags         players
+// @Produce      json
+// @Param        id   path     int  true  "ID игрока"
+// @Success      200  {object} map[string]int
+// @Failure      400  {object} Err
+// @Failure      404  {object} Err
+// @Router       /player/{id} [delete]
 func (h *ItemHandler) DeletePlayer(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -148,6 +198,17 @@ func (d figureDTO) toModel() chess.Figure {
 	}
 }
 
+// CreateFigure godoc
+// @Summary      Создать фигуру
+// @Description  Создает новую фигуру
+// @Tags         figures
+// @Accept       json
+// @Produce      json
+// @Param        figure body     figureDTO true  "Данные фигуры"
+// @Success      201    {object} map[string]int
+// @Failure      400    {object} Err
+// @Failure      500    {object} Err
+// @Router       /figure [post]
 func (h *ItemHandler) CreateFigure(ctx *gin.Context) {
 	var dto figureDTO
 	if err := ctx.ShouldBindJSON(&dto); err != nil {
@@ -162,6 +223,18 @@ func (h *ItemHandler) CreateFigure(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
+// UpdateFigure godoc
+// @Summary      Обновить фигуру
+// @Description  Обновляет фигуру по ID
+// @Tags         figures
+// @Accept       json
+// @Produce      json
+// @Param        id     path     int        true  "ID фигуры"
+// @Param        figure body     figureDTO  true  "Новые данные"
+// @Success      200    {object} map[string]int
+// @Failure      400    {object} Err
+// @Failure      404    {object} Err
+// @Router       /figure/{id} [put]
 func (h *ItemHandler) UpdateFigure(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -179,10 +252,27 @@ func (h *ItemHandler) UpdateFigure(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"id": id})
 }
 
+// ListFigures godoc
+// @Summary      Список фигур
+// @Description  Возвращает все сохраненные фигуры
+// @Tags         figures
+// @Produce      json
+// @Success      200  {array}  chess.Figure
+// @Router       /figures [get]
 func (h *ItemHandler) ListFigures(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, h.entityService.ListFigures())
 }
 
+// GetFigure godoc
+// @Summary      Получить фигуру
+// @Description  Возвращает фигуру по ID
+// @Tags         figures
+// @Produce      json
+// @Param        id   path     int  true  "ID фигуры"
+// @Success      200  {object} chess.Figure
+// @Failure      400  {object} Err
+// @Failure      404  {object} Err
+// @Router       /figure/{id} [get]
 func (h *ItemHandler) GetFigure(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -196,6 +286,16 @@ func (h *ItemHandler) GetFigure(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, f)
 }
 
+// DeleteFigure godoc
+// @Summary      Удалить фигуру
+// @Description  Удаляет фигуру по ID
+// @Tags         figures
+// @Produce      json
+// @Param        id   path     int  true  "ID фигуры"
+// @Success      200  {object} map[string]int
+// @Failure      400  {object} Err
+// @Failure      404  {object} Err
+// @Router       /figure/{id} [delete]
 func (h *ItemHandler) DeleteFigure(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -231,6 +331,17 @@ func (d moveDTO) toModel() player.Move {
 	}
 }
 
+// CreateMove godoc
+// @Summary      Создать ход
+// @Description  Создает новый ход в хранилище
+// @Tags         moves
+// @Accept       json
+// @Produce      json
+// @Param        move body     moveDTO true  "Данные хода"
+// @Success      201  {object} map[string]int
+// @Failure      400  {object} Err
+// @Failure      500  {object} Err
+// @Router       /move [post]
 func (h *ItemHandler) CreateMove(ctx *gin.Context) {
 	var dto moveDTO
 	if err := ctx.ShouldBindJSON(&dto); err != nil {
@@ -245,6 +356,18 @@ func (h *ItemHandler) CreateMove(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
+// UpdateMove godoc
+// @Summary      Обновить ход
+// @Description  Обновляет ход по ID
+// @Tags         moves
+// @Accept       json
+// @Produce      json
+// @Param        id   path     int     true  "ID хода"
+// @Param        move body     moveDTO true  "Новые данные хода"
+// @Success      200  {object} map[string]int
+// @Failure      400  {object} Err
+// @Failure      404  {object} Err
+// @Router       /move/{id} [put]
 func (h *ItemHandler) UpdateMove(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -262,10 +385,27 @@ func (h *ItemHandler) UpdateMove(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"id": id})
 }
 
+// ListMoves godoc
+// @Summary      Список ходов
+// @Description  Возвращает все сохраненные ходы
+// @Tags         moves
+// @Produce      json
+// @Success      200  {array}  player.Move
+// @Router       /moves [get]
 func (h *ItemHandler) ListMoves(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, h.entityService.ListMoves())
 }
 
+// GetMove godoc
+// @Summary      Получить ход
+// @Description  Возвращает ход по ID
+// @Tags         moves
+// @Produce      json
+// @Param        id   path     int  true  "ID хода"
+// @Success      200  {object} player.Move
+// @Failure      400  {object} Err
+// @Failure      404  {object} Err
+// @Router       /move/{id} [get]
 func (h *ItemHandler) GetMove(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
@@ -279,6 +419,16 @@ func (h *ItemHandler) GetMove(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, m)
 }
 
+// DeleteMove godoc
+// @Summary      Удалить ход
+// @Description  Удаляет ход по ID
+// @Tags         moves
+// @Produce      json
+// @Param        id   path     int  true  "ID хода"
+// @Success      200  {object} map[string]int
+// @Failure      400  {object} Err
+// @Failure      404  {object} Err
+// @Router       /move/{id} [delete]
 func (h *ItemHandler) DeleteMove(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {

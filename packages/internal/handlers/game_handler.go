@@ -45,6 +45,16 @@ func NewGameHandler(s *service.GameServiceNew) *GameHandler {
 	return &GameHandler{gameService: s, render: &service.WebRender{}}
 }
 
+// NewGame godoc
+// @Summary      Новая игра
+// @Description  Создает новую шахматную партию между двумя игроками
+// @Tags         game
+// @Accept       json
+// @Produce      json
+// @Param        request body     createGame  true  "Параметры новой игры"
+// @Success      200     {object} response
+// @Failure      400     {object} Err
+// @Router       /game [post]
 func (h *GameHandler) NewGame(ctx *gin.Context) {
 	game := createGame{}
 
@@ -58,6 +68,16 @@ func (h *GameHandler) NewGame(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
+// DisplayBoard godoc
+// @Summary      Отображение доски
+// @Description  Возвращает текущее состояние доски в JSON или HTML (зависит от Accept-заголовка)
+// @Tags         game
+// @Produce      json
+// @Produce      html
+// @Param        id   path     int  true  "ID игры"
+// @Success      200  {object} object
+// @Failure      400  {object} map[string]string
+// @Router       /game/{id} [get]
 func (h *GameHandler) DisplayBoard(ctx *gin.Context) {
 	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
@@ -81,6 +101,17 @@ func (h *GameHandler) DisplayBoard(ctx *gin.Context) {
 	}
 }
 
+// Move godoc
+// @Summary      Сделать ход
+// @Description  Выполняет ход указанного игрока в активной партии
+// @Tags         game
+// @Accept       json
+// @Produce      json
+// @Param        id      path     int   true  "ID игры"
+// @Param        request body     move  true  "Параметры хода"
+// @Success      200     {object} response
+// @Failure      400     {object} Err
+// @Router       /game/{id}/move [post]
 func (h *GameHandler) Move(ctx *gin.Context) {
 	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
@@ -100,6 +131,17 @@ func (h *GameHandler) Move(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
+// Surrender godoc
+// @Summary      Сдаться
+// @Description  Игрок сдается, партия завершается победой соперника
+// @Tags         game
+// @Accept       json
+// @Produce      json
+// @Param        id      path     int        true  "ID игры"
+// @Param        request body     surrender  true  "Кто сдается"
+// @Success      200     {object} response
+// @Failure      400     {object} Err
+// @Router       /game/{id}/surrender [post]
 func (h *GameHandler) Surrender(ctx *gin.Context) {
 	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
@@ -124,6 +166,15 @@ func (h *GameHandler) Surrender(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, resp)
 }
 
+// StopGame godoc
+// @Summary      Остановить игру
+// @Description  Останавливает партию без объявления победителя
+// @Tags         game
+// @Produce      json
+// @Param        id   path     int  true  "ID игры"
+// @Success      200  {object} response
+// @Failure      400  {object} Err
+// @Router       /game/{id}/stop [post]
 func (h *GameHandler) StopGame(ctx *gin.Context) {
 	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
@@ -141,6 +192,17 @@ func (h *GameHandler) StopGame(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, resp)
 }
 
+// AutoMove godoc
+// @Summary      Автоход
+// @Description  Запускает указанное количество автоматических ходов от лица игрока
+// @Tags         game
+// @Accept       json
+// @Produce      json
+// @Param        id      path     int      true  "ID игры"
+// @Param        request body     autoMove true  "Параметры автоматических ходов"
+// @Success      200     {object} response
+// @Failure      400     {object} Err
+// @Router       /game/{id}/automove [post]
 func (h *GameHandler) AutoMove(ctx *gin.Context) {
 	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
