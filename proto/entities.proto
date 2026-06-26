@@ -1,0 +1,121 @@
+syntax = "proto3";
+package proto;
+
+// ОБЯЗАТЕЛЬНО ДЛЯ GO: укажите путь к вашему пакету (замените на свой module name)
+option go_package = "go-basic/proto;proto";
+
+message Figure {
+    int64 id = 1;
+    int32 symbol = 2;
+    string piece_color = 3;
+    string game_color = 4;
+}
+
+message Move {
+    int64 id = 1;
+    int64 time_took = 2;
+    string position_from = 3;
+    string position_to = 4;
+    int32 figure = 5;
+}
+
+message CreatePlayerRequest {
+    string name = 1;
+    string figures_color = 2;
+}
+
+message UpdatePlayerRequest {
+    int64 id = 1;
+    string name = 2;
+    string figures_color = 3;
+}
+
+message Player {
+    int64 id = 1;
+    string name = 2;
+    string figures_color = 3;
+    repeated Figure figures_took = 4;
+    repeated Move moves = 5;
+}
+
+message PlayersList {
+    repeated Player players = 1;
+}
+
+message PlayerById {
+    int64 id = 1;
+}
+
+// Добавили Request в название сообщения
+message CreateFigureRequest {
+    int32 symbol = 1;
+    string piece_color = 2;
+    string game_color = 3;
+}
+
+// Добавили Request в название сообщения
+message UpdateFigureRequest {
+    int64 id = 1;
+    int32 symbol = 2;
+    string piece_color = 3;
+    string game_color = 4;
+}
+
+message FiguresList {
+    repeated Figure figures = 1;
+}
+
+message FigureById {
+    int64 id = 1;
+}
+
+// Добавили Request в название сообщения
+message CreateMoveRequest {
+    int64 time_took = 1;
+    string position_from = 2;
+    string position_to = 3;
+    int32 figure = 4;
+}
+
+// Добавили Request в название сообщения
+message UpdateMoveRequest {
+    int64 id = 1;
+    int64 time_took = 2;
+    string position_from = 3;
+    string position_to = 4;
+    int32 figure = 5;
+}
+
+message MovesList {
+    repeated Move moves = 1;
+}
+
+message MoveById {
+    int64 id = 1;
+}
+
+message Response {
+    string message = 1;
+}
+
+message Empty {}
+
+service EntityService {
+    rpc CreatePlayer(CreatePlayerRequest) returns (Player) {}
+    rpc UpdatePlayer(UpdatePlayerRequest) returns (Player) {}
+    rpc ListPlayers(Empty) returns (PlayersList) {}
+    rpc GetPlayer(PlayerById) returns (Player) {}
+    rpc DeletePlayer(PlayerById) returns (Response) {}
+
+    rpc CreateFigure(CreateFigureRequest) returns (Figure) {}
+    rpc UpdateFigure(UpdateFigureRequest) returns (Figure) {}
+    rpc ListFigures(Empty) returns (FiguresList) {}
+    rpc GetFigure(FigureById) returns (Figure) {}
+    rpc DeleteFigure(FigureById) returns (Response) {}
+
+    rpc CreateMove(CreateMoveRequest) returns (Move) {}
+    rpc UpdateMove(UpdateMoveRequest) returns (Move) {}
+    rpc ListMoves(Empty) returns (MovesList) {}
+    rpc GetMove(MoveById) returns (Move) {}
+    rpc DeleteMove(MoveById) returns (Response) {}
+}
