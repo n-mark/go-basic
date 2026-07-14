@@ -3,8 +3,15 @@ package repository
 import (
 	"fmt"
 
+	"example.com/go-basic/packages/internal/history"
 	"example.com/go-basic/packages/internal/models/chess"
 	"example.com/go-basic/packages/internal/models/player"
+)
+
+const (
+	historyEntityPlayer = "player"
+	historyEntityFigure = "figure"
+	historyEntityMove   = "move"
 )
 
 func (r *Repo) AddPlayer(p player.Player) (int, error) {
@@ -15,10 +22,10 @@ func (r *Repo) AddPlayer(p player.Player) (int, error) {
 	tmp := p
 	r.AppendPlayer(tmp)
 	if err := r.PersistPlayers(); err != nil {
-		// откатываем добавление
 		r.RemovePlayer(r.PlayerIndexByID(tmp.ID))
 		return 0, err
 	}
+	r.recordHistory(historyEntityPlayer, tmp.ID, history.ActionCreate, nil, tmp)
 	return p.ID, nil
 }
 
@@ -35,6 +42,7 @@ func (r *Repo) UpdatePlayer(id int, p player.Player) error {
 		r.ReplacePlayer(idx, old)
 		return err
 	}
+	r.recordHistory(historyEntityPlayer, p.ID, history.ActionUpdate, old, p)
 	return nil
 }
 
@@ -49,6 +57,7 @@ func (r *Repo) DeletePlayer(id int) error {
 		r.AppendPlayer(backup)
 		return err
 	}
+	r.recordHistory(historyEntityPlayer, backup.ID, history.ActionDelete, backup, nil)
 	return nil
 }
 
@@ -78,6 +87,7 @@ func (r *Repo) AddFigure(f chess.Figure) (int, error) {
 		r.RemoveFigure(r.FigureIndexByID(tmp.ID))
 		return 0, err
 	}
+	r.recordHistory(historyEntityFigure, tmp.ID, history.ActionCreate, nil, tmp)
 	return f.ID, nil
 }
 
@@ -94,6 +104,7 @@ func (r *Repo) UpdateFigure(id int, f chess.Figure) error {
 		r.ReplaceFigure(idx, old)
 		return err
 	}
+	r.recordHistory(historyEntityFigure, f.ID, history.ActionUpdate, old, f)
 	return nil
 }
 
@@ -108,6 +119,7 @@ func (r *Repo) DeleteFigure(id int) error {
 		r.AppendFigure(backup)
 		return err
 	}
+	r.recordHistory(historyEntityFigure, backup.ID, history.ActionDelete, backup, nil)
 	return nil
 }
 
@@ -137,6 +149,7 @@ func (r *Repo) AddMove(m player.Move) (int, error) {
 		r.RemoveMove(r.MoveIndexByID(tmp.ID))
 		return 0, err
 	}
+	r.recordHistory(historyEntityMove, tmp.ID, history.ActionCreate, nil, tmp)
 	return m.ID, nil
 }
 
@@ -153,6 +166,7 @@ func (r *Repo) UpdateMove(id int, m player.Move) error {
 		r.ReplaceMove(idx, old)
 		return err
 	}
+	r.recordHistory(historyEntityMove, m.ID, history.ActionUpdate, old, m)
 	return nil
 }
 
@@ -167,6 +181,7 @@ func (r *Repo) DeleteMove(id int) error {
 		r.AppendMove(backup)
 		return err
 	}
+	r.recordHistory(historyEntityMove, backup.ID, history.ActionDelete, backup, nil)
 	return nil
 }
 
