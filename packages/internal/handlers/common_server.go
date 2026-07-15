@@ -3,14 +3,17 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
-	"time"
 
+	"example.com/go-basic/packages/internal/config"
 	"example.com/go-basic/packages/internal/grpc"
-	"example.com/go-basic/packages/internal/history"
 	"example.com/go-basic/packages/internal/repository"
 	"example.com/go-basic/packages/internal/service"
+
+	"github.com/microbus-io/sequel"
+	"github.com/microbus-io/sequel/sequelpgx"
 )
 
 type CommonServer struct {
@@ -19,27 +22,17 @@ type CommonServer struct {
 	grpc          *grpc.GrpcServer
 	repo          *repository.Repo
 	entityService *service.EntityService
-	historyLogger history.Logger
 }
-
-const (
-	defaultMongoURI       = "mongodb://localhost:27017"
-	defaultMongoDB        = "go_basic"
-	defaultRedisAddr      = "localhost:6379"
-	defaultRedisEntityTTL = 24 * time.Hour
-	defaultRedisGlobalTTL = 7 * 24 * time.Hour
-	defaultRedisLimit     = 1000
-)
 
 func NewCommonServer() *CommonServer {
 	gameService := service.NewGameServiceNew()
 
-	sp, hist, err := initStorage(context.Background())
+	sp, err := initPostgresStorageProvider(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("storage init: %w", err))
 	}
 
-	repo := repository.NewWithHistory(sp, hist)
+	repo := repository.New(sp)
 	entityService := service.NewEntityService(repo)
 	ws := InitServer(gameService, entityService)
 	cs := NewConsoleServer(gameService)
@@ -51,90 +44,104 @@ func NewCommonServer() *CommonServer {
 		grpc:          g,
 		repo:          repo,
 		entityService: entityService,
-		historyLogger: hist,
 	}
 }
 
 func (s *CommonServer) Run() {
 	defer s.repo.CloseStorage()
-	if s.historyLogger != nil {
-		defer func() {
-			if err := s.historyLogger.Close(); err != nil {
-				slog.Error("history logger close failed", "error", err)
-			}
-		}()
-	}
 	go s.consoleServer.RunConsoleListener()
 	go grpc.RunGrpcListenerInParallel(s.grpc)
 	s.webServer.RunServer()
 }
 
-func initStorage(ctx context.Context) (repository.StorageProvider, history.Logger, error) {
-	storageType := os.Getenv("STORAGE_TYPE")
-	if storageType == "" {
-		storageType = "mongo"
+func initPostgresStorageProvider(ctx context.Context) (repository.StorageProvider, error) {
+	pgCfg := config.GetPGConfig()
+	applyDbMigrations(ctx, pgCfg)
+	pool, err := repository.ConnectPG(ctx, pgCfg.DSN())
+	if err != nil {
+		slog.Error("failed to connect to postgres", "err", err)
+		os.Exit(1)
 	}
+	defer pool.Close()
 
-	switch storageType {
-	case "local":
-		slog.Info("using local storage")
-		return repository.NewLocalStorageProvider(), nil, nil
+	pgStore := repository.NewPgStore(pool)
 
-	case "mongo":
-		return initMongoAndRedis(ctx)
-
-	default:
-		return nil, nil, fmt.Errorf("unknown STORAGE_TYPE=%q (expected local|mongo)", storageType)
-	}
+	return pgStore, nil
 }
 
-func initMongoAndRedis(ctx context.Context) (repository.StorageProvider, history.Logger, error) {
-	mongoURI := getenv("MONGO_URI", defaultMongoURI)
-	mongoDB := getenv("MONGO_DB", defaultMongoDB)
+func applyDbMigrations(ctx context.Context, pgCfg config.PGConfig) {
+	// 2. Устанавливаем соединение с БД через драйвер PostgreSQL
+    db, err := sequel.Open("pgx", pgCfg.DSN())
+    if err != nil {
+        log.Fatalf("❌ Не удалось подключиться к PostgreSQL: %v", err)
+    }
+    defer db.Close()
 
-	mongoProvider, err := repository.NewMongoStorageProvider(ctx, repository.MongoOptions{
-		URI:      mongoURI,
-		Database: mongoDB,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("mongo: %w", err)
-	}
-	slog.Info("mongo: connected", "uri", mongoURI, "db", mongoDB)
+    // Проверяем соединение
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    
+    if err := db.Ping(); err != nil {
+        log.Fatalf("❌ PostgreSQL не отвечает: %v", err)
+    }
+    log.Println("✅ Подключение к PostgreSQL установлено")
 
-	redisLogger, err := history.NewRedisLogger(ctx, history.Options{
-		Addr:         getenv("REDIS_ADDR", defaultRedisAddr),
-		Password:     os.Getenv("REDIS_PASSWORD"),
-		DB:           0,
-		EntityTTL:    parseDuration("REDIS_ENTITY_TTL", defaultRedisEntityTTL),
-		GlobalTTL:    parseDuration("REDIS_GLOBAL_TTL", defaultRedisGlobalTTL),
-		HistoryLimit: defaultRedisLimit,
-	})
-	if err != nil {
-		mongoProvider.Close()
-		return nil, nil, fmt.Errorf("redis: %w", err)
-	}
-	slog.Info("redis: connected", "addr", getenv("REDIS_ADDR", defaultRedisAddr))
+    // 3. Выполняем миграции
+    log.Println("🔄 Запуск миграций...")
+    
+    // Важно: указываем уникальный идентификатор для отслеживания версии
+    // Обычно это имя сервиса + версия миграций
+    err = db.Migrate("my-service@v1", migrationFS)
+    if err != nil {
+        log.Fatalf("❌ Ошибка выполнения миграций: %v", err)
+    }
 
-	return mongoProvider, redisLogger, nil
+    // Проверяем, какие миграции были применены
+    applied, err := getAppliedMigrations(db)
+    if err != nil {
+        log.Printf("⚠️ Не удалось получить список примененных миграций: %v", err)
+    } else {
+        log.Printf("✅ Применено миграций: %d", len(applied))
+        for _, m := range applied {
+            log.Printf("   - %s (применена: %s)", m.Name, m.AppliedAt.Format(time.RFC3339))
+        }
+    }
+
+    log.Println("✅ Все миграции успешно применены")
+
+    // 4. Запускаем основное приложение
+    log.Println("🚀 Запуск основного приложения...")
+    // ... ваш код здесь
+	panic("unimplemented")
 }
 
-func getenv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
+// Структура для хранения информации о примененных миграциях
+type AppliedMigration struct {
+    Name      string
+    AppliedAt time.Time
 }
 
-func parseDuration(key string, fallback time.Duration) time.Duration {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	d, err := time.ParseDuration(v)
-	if err != nil {
-		slog.Warn("can't parse duration, use default value",
-			"key", key, "value", v, "fallback", fallback, "error", err)
-		return fallback
-	}
-	return d
+// Функция для получения списка примененных миграций
+func getAppliedMigrations(db *sequel.DB) ([]AppliedMigration, error) {
+    // sequel создает таблицу sequel_migrations для отслеживания
+    rows, err := db.Query(`
+        SELECT name, applied_at 
+        FROM sequel_migrations 
+        ORDER BY id
+    `)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var migrations []AppliedMigration
+    for rows.Next() {
+        var m AppliedMigration
+        if err := rows.Scan(&m.Name, &m.AppliedAt); err != nil {
+            return nil, err
+        }
+        migrations = append(migrations, m)
+    }
+    
+    return migrations, rows.Err()
 }
