@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -37,32 +38,102 @@ func (p *PostgresStorageProvider) Load(r *Repo) {
 	}
 	r.Figures = figures
 
-	movesQuery := "SELECT id, time_took, position_from, position_to, figure FROM figures WHERE 1=1"
+	movesQuery := "SELECT id, time_took, position_from, position_to, figure FROM moves WHERE 1=1"
 	moves, err := scanRows[player.Move](ctx, p.db, movesQuery)
 	if err != nil {
-		slog.Error("pgstorage: load figures failed", "error", err)
+		slog.Error("pgstorage: load moves failed", "error", err)
 	}
 	r.Moves = moves
 }
 
+// SavePlayers вставляет/обновляет всех игроков в одной транзакции (upsert).
 func (p *PostgresStorageProvider) SavePlayers(players []player.Player) error {
-	//TODO implement me
-	panic("implement me")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tx, err := p.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	const q = `
+		INSERT INTO players (id, name, figures_color)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (id) DO UPDATE
+		SET name = EXCLUDED.name,
+		    figures_color = EXCLUDED.figures_color`
+	for _, pl := range players {
+		if _, err := tx.Exec(ctx, q, pl.ID, pl.Name, pl.FiguresColor); err != nil {
+			return fmt.Errorf("upsert player %d: %w", pl.ID, err)
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
+// SaveFigures вставляет/обновляет все фигуры в одной транзакции (upsert).
 func (p *PostgresStorageProvider) SaveFigures(figures []chess.Figure) error {
-	//TODO implement me
-	panic("implement me")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tx, err := p.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	const q = `
+		INSERT INTO figures (id, symbol, piece_color)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (id) DO UPDATE
+		SET symbol = EXCLUDED.symbol,
+		    piece_color = EXCLUDED.piece_color`
+	for _, f := range figures {
+		if _, err := tx.Exec(ctx, q, f.ID, f.Symbol, f.PieceColor); err != nil {
+			return fmt.Errorf("upsert figure %d: %w", f.ID, err)
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
+// SaveMoves вставляет/обновляет все ходы в одной транзакции (upsert).
 func (p *PostgresStorageProvider) SaveMoves(moves []player.Move) error {
-	//TODO implement me
-	panic("implement me")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tx, err := p.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	const q = `
+		INSERT INTO moves (id, time_took, position_from, position_to, figure)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (id) DO UPDATE
+		SET time_took     = EXCLUDED.time_took,
+		    position_from = EXCLUDED.position_from,
+		    position_to   = EXCLUDED.position_to,
+		    figure        = EXCLUDED.figure`
+	for _, m := range moves {
+		if _, err := tx.Exec(ctx, q,
+			m.ID,
+			m.TimeTook.Nanoseconds(),
+			m.PositionFrom,
+			m.PositionTo,
+			m.Figure,
+		); err != nil {
+			return fmt.Errorf("upsert move %d: %w", m.ID, err)
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (p *PostgresStorageProvider) Close() {
-	//TODO implement me
-	panic("implement me")
+	p.db.Close()
 }
 
 func ConnectPG(ctx context.Context, dsn string) (*pgxpool.Pool, error) {

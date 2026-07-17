@@ -68,7 +68,8 @@ func initPostgresStorageProvider(ctx context.Context) (repository.StorageProvide
 		slog.Error("failed to connect to postgres", "err", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
+	// pool.Close() вызывается один раз на завершении приложения
+	// через repo.CloseStorage() -> pgStore.Close() в Run().
 
 	pgStore := repository.NewPgStore(pool)
 
