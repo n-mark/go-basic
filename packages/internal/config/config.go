@@ -23,11 +23,11 @@ func (c PGConfig) DSN() string {
 
 func GetPGConfig() PGConfig {
 	return PGConfig{
-		Host:     getenv("PG_HOST", "postgres"),
+		Host:     getenv("PG_HOST", "localhost"),
 		Port:     getenv("PG_PORT", "5432"),
-		User:     getenv("PG_USER", "billing"),
-		Password: getenv("PG_PASSWORD", "billing"),
-		Database: getenv("PG_DATABASE", "billing"),
+		User:     getenv("PG_USER", "gobasic"),
+		Password: getenv("PG_PASSWORD", "gobasic"),
+		Database: getenv("PG_DATABASE", "gobasic"),
 		SSLMode:  getenv("PG_SSLMODE", "disable"),
 	}
 }

@@ -1,33 +1,21 @@
 services:
-  mongo:
-    image: mongo:7
-    container_name: go_basic_mongo
+  postgres:
+    image: postgres:16-alpine
+    container_name: gobasic-postgres
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    environment:
+      POSTGRES_USER: ${PG_USER:-gobasic}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-gobasic}
+      POSTGRES_DB: ${PG_DATABASE:-gobasic}
     volumes:
-      - mongo_data:/data/db
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${PG_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-gobasic} -d ${PG_DATABASE:-gobasic}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: go_basic_redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: ["redis-server", "--save", "60", "1", "--loglevel", "notice"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      retries: 10
 
 volumes:
-  mongo_data:
-  redis_data:
+  pgdata:
